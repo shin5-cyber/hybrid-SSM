@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V10)</title>
+    <title>Smart Supplies Manager (Hybrid V12)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -168,7 +168,8 @@
 
                 <!-- レシピ結果 -->
                 <div id="recipeResultArea" class="hidden mt-6 animate-fade-in">
-                    <div class="markdown-body bg-white p-5 rounded-xl border border-orange-100 shadow-sm text-sm leading-relaxed text-slate-700">
+                    <!-- IDを追加してJSから確実に特定できるように修正 -->
+                    <div id="recipeOutput" class="markdown-body bg-white p-5 rounded-xl border border-orange-100 shadow-sm text-sm leading-relaxed text-slate-700">
                         <!-- AI出力結果 -->
                     </div>
                     <div class="text-center mt-4">
@@ -731,17 +732,18 @@
             updateFormVisibility();
         }
 
-        // --- Recipe Feature (UPDATED) ---
+        // --- Recipe Feature (UPDATED & FIXED) ---
         window.openRecipeModal = function() {
             const modal = document.getElementById('recipeModal');
             const listEl = document.getElementById('expiringItemsList');
             const resultEl = document.getElementById('recipeResultArea');
             const loadingEl = document.getElementById('recipeLoading');
             const genBtn = document.getElementById('generateRecipeBtn');
+            const outEl = document.getElementById('recipeOutput');
 
-            // Reset UI
+            // Reset UI (FIXED: Clear only the content, not the container)
             resultEl.classList.add('hidden');
-            resultEl.innerHTML = '';
+            if(outEl) outEl.innerHTML = '';
             loadingEl.classList.add('hidden');
             genBtn.disabled = false;
             genBtn.innerHTML = '<i class="fas fa-magic"></i> AIにレシピを考えてもらう';
@@ -769,9 +771,7 @@
                 }).join('');
             }
             
-            // Store items for generation (use all if no expiring, or just expiring)
             window.currentExpiringItems = expiringItems.length > 0 ? expiringItems.map(i => i.name).join(', ') : "冷蔵庫にある一般的な食材";
-
             modal.classList.remove('hidden');
         }
 
@@ -784,7 +784,7 @@
             const loadingEl = document.getElementById('recipeLoading');
             const resultEl = document.getElementById('recipeResultArea');
             const genBtn = document.getElementById('generateRecipeBtn');
-            const mdBody = resultEl.querySelector('.markdown-body');
+            const mdBody = document.getElementById('recipeOutput');
             
             // Get user selections
             const genre = document.getElementById('recipeGenre').value;

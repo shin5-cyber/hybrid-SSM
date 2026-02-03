@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V12)</title>
+    <title>Smart Supplies Manager (Hybrid V15)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -825,6 +825,7 @@
             `;
 
             try {
+                // MODEL CHANGED: gemini-2.5-flash (User Request)
                 const responseText = await callGeminiText(apiKey, prompt);
                 mdBody.innerHTML = marked.parse(responseText);
                 resultEl.classList.remove('hidden');
@@ -839,7 +840,8 @@
         }
 
         async function callGeminiText(key, prompt) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+            // MODEL CHANGED: gemini-2.5-flash (User Request)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -848,7 +850,13 @@
                 })
             });
             
-            if(!res.ok) throw new Error(`API Error: ${res.status}`);
+            if(!res.ok) {
+                // 429 Error Handling
+                if (res.status === 429) {
+                    throw new Error("利用制限(429)に達しました。1分ほど待ってから再度お試しください。");
+                }
+                throw new Error(`API Error: ${res.status}`);
+            }
             const d = await res.json();
             return d.candidates[0].content.parts[0].text;
         }
@@ -1122,7 +1130,12 @@
                     if(res.capacityValue) document.getElementById('itemCapacityValue').value = res.capacityValue;
                     if(res.capacityUnit) document.getElementById('itemCapacityUnit').value = res.capacityUnit;
                 }
-            } catch(e) { console.error(e); alert('AI解析エラー: '+e.message); }
+            } catch(e) { 
+                console.error(e); 
+                let msg = e.message;
+                if(msg.includes('429')) msg = "利用制限(429)に達しました。1分ほど待ってから再度お試しください。";
+                alert('AI解析エラー: '+msg); 
+            }
             finally { document.getElementById('loadingOverlay').classList.add('hidden'); input.value=''; }
         }
         function fileToBase64(file) {
@@ -1140,11 +1153,15 @@
             });
         }
         async function callGemini(key, base64) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+            // MODEL CHANGED: gemini-2.5-flash (User Request)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
             // プロンプト修正: 賞味期限も読み取るように指示を追加
             const prompt = `この画像を分析し、商品の「名前」「個数」「カテゴリ」「期限（賞味期限または消費期限）」「内容量(数値)」「内容量単位」を特定せよ。カテゴリは[${window.appData.categories.join(',')}]から選択。JSON形式{"name":str,"quantity":num,"category":str,"expiry":"YYYY-MM-DD", "capacityValue":num, "capacityUnit":str}で返す。期限不明はnull。単位はml, L, g, kg, 枚切り, 個入, cmのいずれかに正規化すること。`;
             const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:"image/jpeg",data:base64}}]}]})});
-            if(!res.ok) throw new Error(res.status);
+            if(!res.ok) {
+                if (res.status === 429) throw new Error("利用制限(429)");
+                throw new Error(res.status);
+            }
             const d = await res.json();
             const txt = d.candidates[0].content.parts[0].text;
             const m = txt.match(/\{[\s\S]*\}/);

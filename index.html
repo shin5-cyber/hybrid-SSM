@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V8)</title>
+    <title>Smart Supplies Manager (Hybrid V10)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <!-- Firebase SDK (互換性重視のCompat版) -->
+    <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -32,6 +34,15 @@
         
         .mode-badge-local { background-color: #64748b; color: white; }
         .mode-badge-cloud { background-color: #10b981; color: white; }
+
+        /* Markdown Styles */
+        .markdown-body h1 { font-size: 1.4em; font-weight: bold; margin: 0.5em 0; color: #ea580c; border-bottom: 2px solid #fed7aa; padding-bottom: 0.2em; }
+        .markdown-body h2 { font-size: 1.1em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #4f46e5; display: flex; align-items: center; }
+        .markdown-body h2::before { content: '●'; color: #cbd5e1; margin-right: 0.5em; font-size: 0.8em; }
+        .markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin-bottom: 1em; list-style-type: disc; }
+        .markdown-body li { margin-bottom: 0.25em; }
+        .markdown-body p { margin-bottom: 0.8em; }
+        .markdown-body strong { color: #b91c1c; background: #fee2e2; padding: 0 0.2em; border-radius: 0.2em; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 pb-20">
@@ -49,6 +60,9 @@
                 <div id="sync-indicator" class="text-xs bg-indigo-700 px-2 py-1 rounded-full flex items-center gap-1 opacity-0 hidden">
                     <i class="fas fa-sync fa-spin"></i> <span id="sync-text">同期中</span>
                 </div>
+                <button onclick="openRecipeModal()" class="text-sm bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded transition flex items-center gap-1 shadow-sm font-bold border border-orange-400" title="レシピ提案">
+                    <i class="fas fa-utensils"></i>
+                </button>
                 <button onclick="openDataModal()" class="text-sm bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded transition">
                     <i class="fas fa-share-alt"></i>
                 </button>
@@ -98,6 +112,74 @@
         </div>
     </div>
 
+    <!-- レシピ提案モーダル -->
+    <div id="recipeModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[95vh]">
+            <div class="bg-orange-500 p-4 flex justify-between items-center text-white shrink-0">
+                <h2 class="font-bold text-lg"><i class="fas fa-utensils mr-2"></i>消費応援レシピ</h2>
+                <button onclick="closeRecipeModal()" class="hover:text-orange-200"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                
+                <!-- 食材リスト -->
+                <div class="mb-4">
+                    <h3 class="font-bold text-xs text-slate-500 uppercase mb-2">メインで使用する食材 (期限間近)</h3>
+                    <div id="expiringItemsList" class="flex flex-wrap gap-2 text-sm text-slate-700 bg-orange-50 p-3 rounded-lg border border-orange-100 min-h-[40px]"></div>
+                </div>
+
+                <!-- 条件設定 -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                    <h3 class="font-bold text-xs text-slate-500 uppercase mb-3">レシピ条件</h3>
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">ジャンル</label>
+                            <select id="recipeGenre" class="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-orange-300 outline-none">
+                                <option value="指定なし">おまかせ</option>
+                                <option value="和食">和食</option>
+                                <option value="洋食">洋食</option>
+                                <option value="中華">中華</option>
+                                <option value="イタリアン">イタリアン</option>
+                                <option value="エスニック">エスニック</option>
+                            </select>
+                        </div>
+                        <div class="w-1/3">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">人数</label>
+                            <div class="flex items-center">
+                                <input type="number" id="recipeServings" value="2" min="1" max="10" class="w-full p-2 border rounded text-center focus:ring-2 focus:ring-orange-300 outline-none">
+                                <span class="ml-1 text-sm text-slate-500">人分</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生成ボタン -->
+                <div class="text-center mb-4">
+                    <button id="generateRecipeBtn" onclick="generateRecipe()" class="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2 mx-auto">
+                        <i class="fas fa-magic"></i> レシピを提案・更新
+                    </button>
+                </div>
+
+                <!-- ローディング -->
+                <div id="recipeLoading" class="hidden mt-8 text-center py-10">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-orange-200 border-t-orange-500 mb-3"></div>
+                    <p class="text-orange-600 font-bold animate-pulse">AIシェフが献立を考案中...</p>
+                    <p class="text-xs text-slate-400 mt-1">ジャンルや人数に合わせて調整しています</p>
+                </div>
+
+                <!-- レシピ結果 -->
+                <div id="recipeResultArea" class="hidden mt-6 animate-fade-in">
+                    <div class="markdown-body bg-white p-5 rounded-xl border border-orange-100 shadow-sm text-sm leading-relaxed text-slate-700">
+                        <!-- AI出力結果 -->
+                    </div>
+                    <div class="text-center mt-4">
+                        <p class="text-xs text-slate-400">※気に入らない場合は条件を変えて再度ボタンを押してください</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- アイテムモーダル -->
     <div id="itemModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
         <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
@@ -119,7 +201,6 @@
                     </label>
                 </div>
 
-                <!-- 基本情報 -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">商品名 <span class="text-red-500">*</span></label>
@@ -131,8 +212,6 @@
                         <select id="itemCategory" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"></select>
                     </div>
                 </div>
-
-                <!-- 数量と容量 -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">個数 <span class="text-red-500">*</span></label>
@@ -155,8 +234,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- 日付情報 -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">消費期限</label>
@@ -328,6 +405,7 @@
         window.appData = { categories: [...DEFAULT_CATEGORIES], items: [] };
         window.currentFilter = 'all';
         window.appMode = 'local';
+        window.currentExpiringItems = "";
         
         let db, auth; 
 
@@ -651,6 +729,128 @@
             renderCategories();
             renderItems();
             updateFormVisibility();
+        }
+
+        // --- Recipe Feature (UPDATED) ---
+        window.openRecipeModal = function() {
+            const modal = document.getElementById('recipeModal');
+            const listEl = document.getElementById('expiringItemsList');
+            const resultEl = document.getElementById('recipeResultArea');
+            const loadingEl = document.getElementById('recipeLoading');
+            const genBtn = document.getElementById('generateRecipeBtn');
+
+            // Reset UI
+            resultEl.classList.add('hidden');
+            resultEl.innerHTML = '';
+            loadingEl.classList.add('hidden');
+            genBtn.disabled = false;
+            genBtn.innerHTML = '<i class="fas fa-magic"></i> AIにレシピを考えてもらう';
+
+            // Filter items (expired or expiring in 3 days)
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const expiringItems = window.appData.items.filter(item => {
+                if(!item.expiryDate) return false;
+                const d = new Date(item.expiryDate);
+                const diffTime = d - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                return diffDays <= 3; // Expiring soon or expired
+            });
+
+            if (expiringItems.length === 0) {
+                listEl.innerHTML = '<span class="text-slate-400">消費期限が近い食材はありません🎉</span>';
+            } else {
+                listEl.innerHTML = expiringItems.map(i => {
+                    const d = new Date(i.expiryDate);
+                    const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24)); 
+                    const color = diffDays < 0 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                    return `<span class="inline-block px-2 py-1 rounded border text-xs font-bold ${color}">${i.name}</span>`;
+                }).join('');
+            }
+            
+            // Store items for generation (use all if no expiring, or just expiring)
+            window.currentExpiringItems = expiringItems.length > 0 ? expiringItems.map(i => i.name).join(', ') : "冷蔵庫にある一般的な食材";
+
+            modal.classList.remove('hidden');
+        }
+
+        window.closeRecipeModal = () => document.getElementById('recipeModal').classList.add('hidden');
+
+        window.generateRecipe = async function() {
+            const apiKey = localStorage.getItem(STORAGE_KEY_GEMINI);
+            if (!apiKey) { alert('Gemini APIキーを設定してください'); return; }
+
+            const loadingEl = document.getElementById('recipeLoading');
+            const resultEl = document.getElementById('recipeResultArea');
+            const genBtn = document.getElementById('generateRecipeBtn');
+            const mdBody = resultEl.querySelector('.markdown-body');
+            
+            // Get user selections
+            const genre = document.getElementById('recipeGenre').value;
+            const servings = document.getElementById('recipeServings').value;
+
+            loadingEl.classList.remove('hidden');
+            resultEl.classList.add('hidden');
+            genBtn.disabled = true;
+
+            const items = window.currentExpiringItems;
+            const prompt = `
+            以下の条件で、家庭で作れる美味しいレシピを1つ提案してください。
+            
+            【条件】
+            - ジャンル: ${genre}
+            - 分量: ${servings}人分
+            - メイン食材（在庫あり）: ${items}
+            - その他、一般的な調味料や野菜は自由に追加して構いません。
+
+            【出力フォーマット】
+            Markdown形式で出力してください。
+            
+            # 料理名
+            
+            ## 不足している食材（買い足し推奨）
+            - なし（または食材名）
+            ※在庫リスト（${items}）に含まれない主要な食材があればここに記載。一般的な調味料は除く。
+            
+            ## 材料 (${servings}人分)
+            - ...
+            
+            ## 作り方
+            1. ...
+            2. ...
+            
+            ## コツ・ポイント
+            (一言アドバイス)
+            `;
+
+            try {
+                const responseText = await callGeminiText(apiKey, prompt);
+                mdBody.innerHTML = marked.parse(responseText);
+                resultEl.classList.remove('hidden');
+            } catch (e) {
+                console.error(e);
+                alert("レシピ生成に失敗しました: " + e.message);
+            } finally {
+                loadingEl.classList.add('hidden');
+                genBtn.disabled = false;
+                genBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 条件を変えて再生成';
+            }
+        }
+
+        async function callGeminiText(key, prompt) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+            
+            if(!res.ok) throw new Error(`API Error: ${res.status}`);
+            const d = await res.json();
+            return d.candidates[0].content.parts[0].text;
         }
 
         // --- Standard UI Functions ---

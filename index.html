@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V15)</title>
+    <title>Smart Supplies Manager (Hybrid V21)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -60,6 +60,10 @@
                 <div id="sync-indicator" class="text-xs bg-indigo-700 px-2 py-1 rounded-full flex items-center gap-1 opacity-0 hidden">
                     <i class="fas fa-sync fa-spin"></i> <span id="sync-text">同期中</span>
                 </div>
+                <!-- 履歴ボタン -->
+                <button onclick="openLogModal()" class="text-sm bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded transition" title="操作履歴">
+                    <i class="fas fa-history"></i>
+                </button>
                 <button onclick="openRecipeModal()" class="text-sm bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded transition flex items-center gap-1 shadow-sm font-bold border border-orange-400" title="レシピ提案">
                     <i class="fas fa-utensils"></i>
                 </button>
@@ -112,6 +116,61 @@
         </div>
     </div>
 
+    <!-- 履歴モーダル -->
+    <div id="logModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center shrink-0">
+                <h2 class="font-bold flex items-center gap-2"><i class="fas fa-history"></i> 操作履歴</h2>
+                <button onclick="closeLogModal()" class="hover:text-slate-300"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-0 overflow-y-auto flex-1 bg-slate-50">
+                <div id="logListContainer" class="p-4 space-y-3">
+                    <!-- JSでログ生成 -->
+                </div>
+                <div class="p-4 text-center text-xs text-slate-400 border-t">
+                    ※ 過去1週間の履歴のみ保存されます
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AIアドバイスモーダル -->
+    <div id="adviceModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white flex justify-between items-center shrink-0">
+                <h2 class="font-bold flex items-center gap-2"><i class="fas fa-robot"></i> AIコンシェルジュ</h2>
+                <button onclick="closeAdviceModal()" class="hover:text-indigo-200"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <h3 id="adviceItemName" class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">商品名</h3>
+                
+                <div class="grid grid-cols-3 gap-2 mb-6">
+                    <button onclick="askAI('storage')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
+                        <i class="fas fa-box-open text-xl"></i>
+                        <span class="text-xs font-bold">保存のコツ</span>
+                    </button>
+                    <button onclick="askAI('nutrition')" class="bg-green-50 hover:bg-green-100 text-green-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
+                        <i class="fas fa-leaf text-xl"></i>
+                        <span class="text-xs font-bold">栄養素</span>
+                    </button>
+                    <button onclick="askAI('recipe')" class="bg-orange-50 hover:bg-orange-100 text-orange-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
+                        <i class="fas fa-utensils text-xl"></i>
+                        <span class="text-xs font-bold">使い切り</span>
+                    </button>
+                </div>
+
+                <div id="adviceResultArea" class="hidden">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed markdown-body"></div>
+                </div>
+                
+                <div id="adviceLoading" class="hidden text-center py-8">
+                    <i class="fas fa-circle-notch fa-spin text-3xl text-indigo-500"></i>
+                    <p class="text-xs text-indigo-500 mt-2 font-bold">AIが考え中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- レシピ提案モーダル -->
     <div id="recipeModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
         <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[95vh]">
@@ -120,14 +179,10 @@
                 <button onclick="closeRecipeModal()" class="hover:text-orange-200"><i class="fas fa-times text-xl"></i></button>
             </div>
             <div class="p-6 overflow-y-auto flex-1">
-                
-                <!-- 食材リスト -->
                 <div class="mb-4">
                     <h3 class="font-bold text-xs text-slate-500 uppercase mb-2">メインで使用する食材 (期限間近)</h3>
                     <div id="expiringItemsList" class="flex flex-wrap gap-2 text-sm text-slate-700 bg-orange-50 p-3 rounded-lg border border-orange-100 min-h-[40px]"></div>
                 </div>
-
-                <!-- 条件設定 -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
                     <h3 class="font-bold text-xs text-slate-500 uppercase mb-3">レシピ条件</h3>
                     <div class="flex gap-4">
@@ -151,32 +206,22 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- 生成ボタン -->
                 <div class="text-center mb-4">
                     <button id="generateRecipeBtn" onclick="generateRecipe()" class="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2 mx-auto">
                         <i class="fas fa-magic"></i> レシピを提案・更新
                     </button>
                 </div>
-
-                <!-- ローディング -->
                 <div id="recipeLoading" class="hidden mt-8 text-center py-10">
                     <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-orange-200 border-t-orange-500 mb-3"></div>
                     <p class="text-orange-600 font-bold animate-pulse">AIシェフが献立を考案中...</p>
                     <p class="text-xs text-slate-400 mt-1">ジャンルや人数に合わせて調整しています</p>
                 </div>
-
-                <!-- レシピ結果 -->
                 <div id="recipeResultArea" class="hidden mt-6 animate-fade-in">
-                    <!-- IDを追加してJSから確実に特定できるように修正 -->
-                    <div id="recipeOutput" class="markdown-body bg-white p-5 rounded-xl border border-orange-100 shadow-sm text-sm leading-relaxed text-slate-700">
-                        <!-- AI出力結果 -->
-                    </div>
+                    <div id="recipeOutput" class="markdown-body bg-white p-5 rounded-xl border border-orange-100 shadow-sm text-sm leading-relaxed text-slate-700"></div>
                     <div class="text-center mt-4">
                         <p class="text-xs text-slate-400">※気に入らない場合は条件を変えて再度ボタンを押してください</p>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -403,12 +448,95 @@
         const COLLECTION_NAME = "inventory_data";
         const DOC_ID = "main_list";
 
-        window.appData = { categories: [...DEFAULT_CATEGORIES], items: [] };
+        window.appData = { categories: [...DEFAULT_CATEGORIES], items: [], logs: [] };
         window.currentFilter = 'all';
         window.appMode = 'local';
         window.currentExpiringItems = "";
+        window.selectedAdviceItem = null;
         
         let db, auth; 
+
+        // --- Logger ---
+        function addLogEntry(message, type = 'info') {
+            const now = Date.now();
+            const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+            
+            if (!window.appData.logs) window.appData.logs = [];
+            window.appData.logs = window.appData.logs.filter(l => (now - l.ts) < oneWeekMs);
+            
+            // シンプルなタイムスタンプベースID (文字列化)
+            const newId = String(now + Math.floor(Math.random()*1000));
+            
+            window.appData.logs.unshift({ id: newId, ts: now, msg: message, type: type });
+            if (window.appData.logs.length > 50) window.appData.logs.length = 50;
+        }
+
+        function timeAgo(ts) {
+            const diff = Date.now() - ts;
+            const min = 60 * 1000;
+            const hour = 60 * min;
+            const day = 24 * hour;
+            if (diff < min) return 'たった今';
+            if (diff < hour) return Math.floor(diff / min) + '分前';
+            if (diff < day) return Math.floor(diff / hour) + '時間前';
+            return Math.floor(diff / day) + '日前';
+        }
+
+        window.openLogModal = function() {
+            const modal = document.getElementById('logModal');
+            const container = document.getElementById('logListContainer');
+            modal.classList.remove('hidden');
+            
+            if (window.appData.logs) {
+                let needSave = false;
+                window.appData.logs.forEach((l, idx) => {
+                    if (!l.id) { l.id = String(l.ts + idx); needSave = true; } // ID補完
+                });
+                if (needSave) syncData();
+            }
+
+            if (!window.appData.logs || window.appData.logs.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-400 text-sm py-4">履歴はありません</div>';
+                return;
+            }
+
+            container.innerHTML = window.appData.logs.map(log => {
+                let icon = 'fa-info-circle text-gray-400';
+                if(log.msg.includes('登録')) icon = 'fa-plus-circle text-green-500';
+                if(log.msg.includes('削除')) icon = 'fa-trash text-red-500';
+                if(log.msg.includes('更新') || log.msg.includes('編集')) icon = 'fa-pen text-blue-500';
+                const date = new Date(log.ts);
+                const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+                
+                return `
+                    <div class="bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex items-start gap-3">
+                        <div class="mt-1"><i class="fas ${icon}"></i></div>
+                        <div class="flex-1">
+                            <p class="text-sm text-slate-700">${log.msg}</p>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs text-slate-400">${dateStr}</span>
+                                <span class="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${timeAgo(log.ts)}</span>
+                            </div>
+                        </div>
+                        <button onclick="deleteLog('${log.id}')" class="text-slate-300 hover:text-red-500 transition p-2" title="履歴を削除">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.deleteLog = function(id) {
+            if(confirm('この履歴を削除しますか？')) {
+                // 文字列比較で削除
+                window.appData.logs = window.appData.logs.filter(l => String(l.id) !== String(id));
+                syncData();
+                openLogModal(); // Refresh
+                showToast("履歴を削除しました");
+            }
+        }
+
+        window.closeLogModal = () => document.getElementById('logModal').classList.add('hidden');
 
         // --- Config Parser ---
         function parseFirebaseConfig(str) {
@@ -430,13 +558,11 @@
             const box = document.getElementById('connectionLog');
             const content = document.getElementById('connectionLogContent');
             box.classList.remove('hidden');
-            
             const div = document.createElement('div');
             div.className = "mb-1 border-b border-gray-800 pb-1";
             if(type==='error') div.className += " text-red-400";
             if(type==='success') div.className += " text-green-300 font-bold";
             if(type==='warn') div.className += " text-yellow-300";
-            
             div.innerText = `> ${msg}`;
             content.appendChild(div);
             box.scrollTop = box.scrollHeight;
@@ -447,44 +573,28 @@
             const btn = document.getElementById('testBtn');
             const box = document.getElementById('connectionLog');
             const content = document.getElementById('connectionLogContent');
-            
-            content.innerHTML = ''; // Clear logs
+            content.innerHTML = '';
             box.classList.remove('hidden');
-            
             const val = document.getElementById('firebaseConfigInput').value.trim();
             if(!val) { addLog('エラー: コードが空です', 'error'); return; }
-            
             const config = parseFirebaseConfig(val);
             if(!config) { addLog('エラー: 解析失敗。形式を確認してください', 'error'); return; }
-
-            // UI feedback
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 通信中...';
             btn.disabled = true;
             addLog(`解析OK: ProjectID=${config.projectId}`);
-
             try {
                 if (typeof firebase === 'undefined') throw new Error('Firebase SDKがロードされていません');
-
-                // Initialize temp app for testing
-                // Compat syntax
-                if (firebase.apps.length === 0) {
-                    // Do nothing, we will use a temp app name
-                }
+                if (firebase.apps.length === 0) {}
                 const tempApp = firebase.initializeApp(config, "testApp_" + Date.now());
                 const tempAuth = tempApp.auth();
                 const tempDb = tempApp.firestore();
-                
-                // 1. Auth Check (Soft fail allowed)
                 addLog('認証試行(匿名)...');
                 try {
                     await tempAuth.signInAnonymously();
                     addLog('認証成功', 'success');
                 } catch (authErr) {
                     addLog(`認証スキップ(警告): ${authErr.code}`, 'warn');
-                    addLog('※コンソールでAuthが無効でもDBがテストモードならOKです', 'warn');
                 }
-                
-                // 2. DB Connectivity Check
                 addLog('データベース接続確認...');
                 try {
                     const testRef = tempDb.collection('artifacts').doc('connection_test');
@@ -493,13 +603,9 @@
                     addLog('テスト完了！「設定を保存」を押してください', 'success');
                     alert('接続成功！設定を保存してください。');
                 } catch (dbErr) {
-                    if(dbErr.code === 'permission-denied') {
-                        throw new Error('権限エラー: セキュリティルールを確認してください');
-                    } else {
-                        throw dbErr;
-                    }
+                    if(dbErr.code === 'permission-denied') throw new Error('権限エラー: セキュリティルールを確認してください');
+                    else throw dbErr;
                 }
-                
             } catch(e) {
                 console.error(e);
                 addLog(`失敗: ${e.message}`, 'error');
@@ -514,7 +620,6 @@
             try {
                 const inputEl = document.getElementById('firebaseConfigInput');
                 const val = inputEl.value.trim();
-                
                 if(!val) {
                     if(confirm('Firebase設定を削除してローカルモードに戻りますか？')) {
                         localStorage.removeItem(STORAGE_KEY_FIREBASE);
@@ -523,39 +628,26 @@
                     }
                     return;
                 }
-                
                 const config = parseFirebaseConfig(val);
-                if(!config) {
-                    alert('コードの解析に失敗しました。');
-                    return;
-                }
-
-                // Save
+                if(!config) { alert('コードの解析に失敗しました。'); return; }
                 localStorage.setItem(STORAGE_KEY_FIREBASE, val);
-                
-                // UI Feedback
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-check"></i> 保存しました！';
                 btn.classList.remove('bg-slate-700', 'hover:bg-slate-600');
                 btn.classList.add('bg-green-600', 'hover:bg-green-500');
-                
                 showToast("設定を保存しました。ブラウザを更新してください。");
-                
-                // Alert with delay
                 setTimeout(() => {
                     alert('設定を保存しました。\n\n【重要】\n設定を反映させるため、ブラウザの更新ボタンを押してページを再読み込みしてください。');
                     btn.innerHTML = originalText;
                     btn.classList.add('bg-slate-700', 'hover:bg-slate-600');
                     btn.classList.remove('bg-green-600', 'hover:bg-green-500');
                 }, 500);
-
             } catch(e) {
                 console.error(e);
                 alert('保存中にエラーが発生しました: ' + e.message);
             }
         }
 
-        // --- Check Saved Data Button ---
         window.checkSavedConfig = function() {
             const saved = localStorage.getItem(STORAGE_KEY_FIREBASE);
             if(saved) {
@@ -567,31 +659,20 @@
 
         window.saveApiKey = function() {
             const key = document.getElementById('geminiApiKey').value.trim();
-            if(key) {
-                localStorage.setItem(STORAGE_KEY_GEMINI, key);
-                alert('保存しました');
-            }
+            if(key) { localStorage.setItem(STORAGE_KEY_GEMINI, key); alert('保存しました'); }
         }
 
-        // --- Init App ---
         function initApp() {
-            // Restore Gemini Key
             const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
             if(gKey) document.getElementById('geminiApiKey').value = gKey;
-
-            // Check Firebase Config
             const fbConfigStr = localStorage.getItem(STORAGE_KEY_FIREBASE);
             if(fbConfigStr) {
                 document.getElementById('firebaseConfigInput').value = fbConfigStr;
                 try {
                     const config = parseFirebaseConfig(fbConfigStr);
                     if(config && config.apiKey) {
-                        // Compat Init
-                        if (!firebase.apps.length) {
-                            firebase.initializeApp(config);
-                        } else {
-                            firebase.app(); // Use default
-                        }
+                        if (!firebase.apps.length) firebase.initializeApp(config);
+                        else firebase.app();
                         db = firebase.firestore();
                         auth = firebase.auth();
                         window.appMode = 'cloud';
@@ -602,29 +683,18 @@
                     showErrorBanner(`クラウド初期化エラー: ${e.message}`);
                 }
             }
-
             updateModeUI();
-
-            if(window.appMode === 'cloud') {
-                initCloudSync();
-            } else {
-                loadLocalData();
-                renderAll();
-            }
-
+            if(window.appMode === 'cloud') initCloudSync();
+            else { loadLocalData(); renderAll(); }
             setupEventListeners();
         }
 
         function showErrorBanner(msg) {
             const banner = document.getElementById('globalErrorBanner');
             const txt = document.getElementById('globalErrorMessage');
-            if(banner && txt) {
-                txt.innerText = msg;
-                banner.classList.remove('hidden');
-            }
+            if(banner && txt) { txt.innerText = msg; banner.classList.remove('hidden'); }
         }
 
-        // --- Data Layer (Hybrid) ---
         function loadLocalData() {
             const stored = localStorage.getItem(STORAGE_KEY_DATA);
             if(stored) {
@@ -632,43 +702,31 @@
                     const p = JSON.parse(stored);
                     window.appData.categories = p.categories || [...DEFAULT_CATEGORIES];
                     window.appData.items = p.items || [];
+                    window.appData.logs = p.logs || [];
                 } catch(e) {}
             }
         }
 
         async function initCloudSync() {
             setSyncStatus(true, "接続中...");
-            
-            // Try Auth (Soft Fail)
-            try { 
-                await auth.signInAnonymously(); 
-            } catch(e) { 
-                console.warn("Anon Auth Fail (Ignored):", e.code);
-            }
-
+            try { await auth.signInAnonymously(); } catch(e) { console.warn("Anon Auth Fail (Ignored):", e.code); }
             try {
-                // Compat syntax
                 const docRef = db.collection('artifacts').doc(SHARED_APP_ID)
                                  .collection('public').doc('data')
                                  .collection(COLLECTION_NAME).doc(DOC_ID);
-
                 docRef.onSnapshot((snap) => {
                     setSyncStatus(true, "同期中...");
                     if(snap.exists) {
                         const d = snap.data();
                         window.appData.categories = d.categories || [...DEFAULT_CATEGORIES];
                         window.appData.items = d.items || [];
-                    } else {
-                        // Create empty doc if needed, or just wait for save
-                        if (window.appData.items.length > 0) syncData(); // If local data exists, push it? No, unsafe.
-                    }
+                        window.appData.logs = d.logs || [];
+                    } else if (window.appData.items.length > 0) syncData();
                     renderAll();
                     setTimeout(() => setSyncStatus(false), 500);
                 }, (err) => {
                     console.error(err);
                     setSyncStatus(true, "エラー");
-                    // Ignore permission-denied loop spam, show toast once
-                    // showToast(`同期エラー: ${err.message}`, true);
                 });
             } catch (err) {
                 console.error("Firestore Init Error:", err);
@@ -696,14 +754,10 @@
             }
         }
 
-        // --- Config Logic --- (Reused above)
-
-        // --- UI Logic ---
         function updateModeUI() {
             const badge = document.getElementById('appModeBadge');
             const indicator = document.getElementById('sync-indicator');
             const shareMode = document.getElementById('shareModalMode');
-            
             if(window.appMode === 'cloud') {
                 badge.className = "text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold mode-badge-cloud flex items-center gap-1";
                 badge.innerHTML = '<i class="fas fa-cloud"></i> Cloud';
@@ -732,7 +786,7 @@
             updateFormVisibility();
         }
 
-        // --- Recipe Feature (UPDATED & FIXED) ---
+        // --- Advice & Recipe ---
         window.openRecipeModal = function() {
             const modal = document.getElementById('recipeModal');
             const listEl = document.getElementById('expiringItemsList');
@@ -740,26 +794,19 @@
             const loadingEl = document.getElementById('recipeLoading');
             const genBtn = document.getElementById('generateRecipeBtn');
             const outEl = document.getElementById('recipeOutput');
-
-            // Reset UI (FIXED: Clear only the content, not the container)
             resultEl.classList.add('hidden');
             if(outEl) outEl.innerHTML = '';
             loadingEl.classList.add('hidden');
             genBtn.disabled = false;
             genBtn.innerHTML = '<i class="fas fa-magic"></i> AIにレシピを考えてもらう';
-
-            // Filter items (expired or expiring in 3 days)
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            
+            const today = new Date(); today.setHours(0,0,0,0);
             const expiringItems = window.appData.items.filter(item => {
                 if(!item.expiryDate) return false;
                 const d = new Date(item.expiryDate);
                 const diffTime = d - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                return diffDays <= 3; // Expiring soon or expired
+                return diffDays <= 3;
             });
-
             if (expiringItems.length === 0) {
                 listEl.innerHTML = '<span class="text-slate-400">消費期限が近い食材はありません🎉</span>';
             } else {
@@ -770,62 +817,26 @@
                     return `<span class="inline-block px-2 py-1 rounded border text-xs font-bold ${color}">${i.name}</span>`;
                 }).join('');
             }
-            
             window.currentExpiringItems = expiringItems.length > 0 ? expiringItems.map(i => i.name).join(', ') : "冷蔵庫にある一般的な食材";
             modal.classList.remove('hidden');
         }
 
         window.closeRecipeModal = () => document.getElementById('recipeModal').classList.add('hidden');
-
         window.generateRecipe = async function() {
             const apiKey = localStorage.getItem(STORAGE_KEY_GEMINI);
             if (!apiKey) { alert('Gemini APIキーを設定してください'); return; }
-
             const loadingEl = document.getElementById('recipeLoading');
             const resultEl = document.getElementById('recipeResultArea');
             const genBtn = document.getElementById('generateRecipeBtn');
             const mdBody = document.getElementById('recipeOutput');
-            
-            // Get user selections
             const genre = document.getElementById('recipeGenre').value;
             const servings = document.getElementById('recipeServings').value;
-
             loadingEl.classList.remove('hidden');
             resultEl.classList.add('hidden');
             genBtn.disabled = true;
-
             const items = window.currentExpiringItems;
-            const prompt = `
-            以下の条件で、家庭で作れる美味しいレシピを1つ提案してください。
-            
-            【条件】
-            - ジャンル: ${genre}
-            - 分量: ${servings}人分
-            - メイン食材（在庫あり）: ${items}
-            - その他、一般的な調味料や野菜は自由に追加して構いません。
-
-            【出力フォーマット】
-            Markdown形式で出力してください。
-            
-            # 料理名
-            
-            ## 不足している食材（買い足し推奨）
-            - なし（または食材名）
-            ※在庫リスト（${items}）に含まれない主要な食材があればここに記載。一般的な調味料は除く。
-            
-            ## 材料 (${servings}人分)
-            - ...
-            
-            ## 作り方
-            1. ...
-            2. ...
-            
-            ## コツ・ポイント
-            (一言アドバイス)
-            `;
-
+            const prompt = `以下の条件で、家庭で作れる美味しいレシピを1つ提案してください。\n【条件】\n- ジャンル: ${genre}\n- 分量: ${servings}人分\n- メイン食材（在庫あり）: ${items}\n- その他、一般的な調味料や野菜は自由に追加して構いません。\n【出力フォーマット】Markdown形式で出力してください。\n# 料理名\n## 不足している食材（買い足し推奨）\n- なし（または食材名）\n※在庫リスト（${items}）に含まれない主要な食材があればここに記載。一般的な調味料は除く。\n## 材料 (${servings}人分)\n- ...\n## 作り方\n1. ...\n2. ...\n## コツ・ポイント\n(一言アドバイス)`;
             try {
-                // MODEL CHANGED: gemini-2.5-flash (User Request)
                 const responseText = await callGeminiText(apiKey, prompt);
                 mdBody.innerHTML = marked.parse(responseText);
                 resultEl.classList.remove('hidden');
@@ -839,29 +850,53 @@
             }
         }
 
-        async function callGeminiText(key, prompt) {
-            // MODEL CHANGED: gemini-2.5-flash (User Request)
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
-            });
+        // --- Advice Feature ---
+        window.openAdviceModal = function(id) {
+            const item = window.appData.items.find(i => i.id === id);
+            if(!item) return;
+            window.selectedAdviceItem = item;
             
-            if(!res.ok) {
-                // 429 Error Handling
-                if (res.status === 429) {
-                    throw new Error("利用制限(429)に達しました。1分ほど待ってから再度お試しください。");
-                }
-                throw new Error(`API Error: ${res.status}`);
-            }
-            const d = await res.json();
-            return d.candidates[0].content.parts[0].text;
+            document.getElementById('adviceItemName').innerText = item.name;
+            document.getElementById('adviceResultArea').classList.add('hidden');
+            document.getElementById('adviceResultArea').querySelector('.markdown-body').innerHTML = '';
+            document.getElementById('adviceLoading').classList.add('hidden');
+            document.getElementById('adviceModal').classList.remove('hidden');
         }
 
-        // --- Standard UI Functions ---
+        window.closeAdviceModal = () => document.getElementById('adviceModal').classList.add('hidden');
+
+        window.askAI = async function(type) {
+            const apiKey = localStorage.getItem(STORAGE_KEY_GEMINI);
+            if (!apiKey) { alert('Gemini APIキーを設定してください'); return; }
+            
+            const item = window.selectedAdviceItem;
+            if(!item) return;
+
+            const resArea = document.getElementById('adviceResultArea');
+            const mdBody = resArea.querySelector('.markdown-body');
+            const loading = document.getElementById('adviceLoading');
+
+            resArea.classList.add('hidden');
+            mdBody.innerHTML = '';
+            loading.classList.remove('hidden');
+
+            let prompt = "";
+            if(type === 'storage') prompt = `「${item.name}」の最適な保存方法（冷蔵・冷凍・常温）と、鮮度を保つコツを簡潔に教えてください。`;
+            if(type === 'nutrition') prompt = `「${item.name}」に含まれる主な栄養素と、期待できる健康効果を簡潔に教えてください。`;
+            if(type === 'recipe') prompt = `「${item.name}」をメインに使った、誰でも作れる簡単な使い切りレシピを1つだけ提案してください。材料と手順を短くまとめてください。`;
+
+            try {
+                const text = await callGeminiText(apiKey, prompt);
+                mdBody.innerHTML = marked.parse(text);
+                resArea.classList.remove('hidden');
+            } catch(e) {
+                alert("AI生成エラー: " + e.message);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        // --- UI ---
         const CATEGORY_COLORS = {'食材':'bg-blue-100 text-blue-800 border-blue-200','日常品':'bg-purple-100 text-purple-800 border-purple-200','調味料':'bg-amber-100 text-amber-800 border-amber-200'};
         const DEFAULT_COLOR = 'bg-slate-100 text-slate-800 border-slate-200';
         window.getCategoryColorClass = (cat) => CATEGORY_COLORS[cat] || DEFAULT_COLOR;
@@ -893,11 +928,9 @@
             const container = document.getElementById('categoryFilters');
             const select = document.getElementById('itemCategory');
             const listSettings = document.getElementById('categoryListSettings');
-            
             let filterHtml = `<button onclick="setFilter('all')" class="category-chip px-4 py-1.5 rounded-full text-sm font-bold transition border ${window.currentFilter === 'all' ? 'bg-slate-800 text-white border-slate-800 active' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">すべて</button>`;
             let selectHtml = `<option value="" disabled selected>選択してください</option>`;
             let settingsHtml = '';
-
             window.appData.categories.forEach(cat => {
                 const isActive = window.currentFilter === cat;
                 filterHtml += `<button onclick="setFilter('${cat}')" class="category-chip px-3 py-1.5 rounded-full text-sm font-medium transition border ${isActive ? 'ring-2 ring-indigo-500 ring-offset-1' : ''} ${window.getCategoryColorClass(cat)} bg-opacity-50 hover:bg-opacity-100">${cat}</button>`;
@@ -948,7 +981,10 @@
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <div><span class="inline-block text-xs px-2 py-0.5 rounded border mb-1 ${getCategoryColorClass(item.category)}">${item.category}</span><h3 class="font-bold text-lg text-slate-800 leading-tight">${item.name} ${capacityStr}</h3><div class="flex flex-wrap mt-1">${badges}</div></div>
-                        <button onclick="editItem('${item.id}')" class="text-slate-300 hover:text-indigo-500 p-1"><i class="fas fa-edit"></i></button>
+                        <div class="flex gap-2">
+                            <button onclick="openAdviceModal('${item.id}')" class="text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1" title="AIコンシェルジュ"><i class="fas fa-robot"></i> AI</button>
+                            <button onclick="editItem('${item.id}')" class="text-slate-300 hover:text-indigo-500 p-1"><i class="fas fa-edit"></i></button>
+                        </div>
                     </div>
                     <div class="text-sm text-slate-500 space-y-1 mb-4">
                         <div class="flex items-center gap-2"><i class="far fa-clock w-4 text-center"></i> 期限: ${item.expiryDate || '--'}</div>
@@ -1057,8 +1093,15 @@
                 replacementValue: parseInt(document.getElementById('replacementValue').value),
                 replacementUnit: document.getElementById('replacementUnit').value
             };
-            if(id) window.appData.items[window.appData.items.findIndex(i=>i.id===id)] = item;
-            else window.appData.items.push(item);
+            if(id) {
+                // 編集ログ
+                window.appData.items[window.appData.items.findIndex(i=>i.id===id)] = item;
+                addLogEntry(`「${name}」を編集しました`, 'edit');
+            } else {
+                // 新規ログ
+                window.appData.items.push(item);
+                addLogEntry(`「${name}」を新規登録しました (${quantity}個)`, 'add');
+            }
             syncData(); closeItemModal();
             if(!id && window.currentFilter!=='all' && window.currentFilter!==category) setFilter(category);
         }
@@ -1071,9 +1114,15 @@
             if(n===0 && change<0 && item.zeroAction==='delete') {
                 if(confirm(`「${item.name}」を削除しますか？`)) {
                     window.appData.items = window.appData.items.filter(i=>i.id!==id);
+                    addLogEntry(`「${item.name}」を削除しました`, 'delete');
                     syncData(); return;
                 }
             }
+            
+            // 在庫増減ログ
+            const diffStr = change > 0 ? `+${change}` : `${change}`;
+            addLogEntry(`「${item.name}」の在庫を更新: ${item.quantity} → ${n} (${diffStr})`, 'update');
+
             item.quantity = n; syncData();
         }
         window.openSettingsModal = () => document.getElementById('settingsModal').classList.remove('hidden');
@@ -1108,7 +1157,9 @@
             try {
                 const p = JSON.parse(decodeURIComponent(escape(atob(v))));
                 if(p.categories && Array.isArray(p.items) && confirm('現在のデータを上書きしますか？')) {
-                    window.appData = p; syncData(); alert('完了'); renderAll(); closeDataModal();
+                    window.appData = p; 
+                    addLogEntry('データをインポートしました', 'info');
+                    syncData(); alert('完了'); renderAll(); closeDataModal();
                 }
             } catch(e) { alert('データ形式エラー'); }
         }
@@ -1130,12 +1181,7 @@
                     if(res.capacityValue) document.getElementById('itemCapacityValue').value = res.capacityValue;
                     if(res.capacityUnit) document.getElementById('itemCapacityUnit').value = res.capacityUnit;
                 }
-            } catch(e) { 
-                console.error(e); 
-                let msg = e.message;
-                if(msg.includes('429')) msg = "利用制限(429)に達しました。1分ほど待ってから再度お試しください。";
-                alert('AI解析エラー: '+msg); 
-            }
+            } catch(e) { console.error(e); alert('AI解析エラー: '+e.message); }
             finally { document.getElementById('loadingOverlay').classList.add('hidden'); input.value=''; }
         }
         function fileToBase64(file) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V23)</title>
+    <title>Smart Supplies Manager (Hybrid V32)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -97,9 +97,10 @@
                 <div class="flex gap-2 items-center w-full sm:w-auto text-sm">
                     <span class="text-slate-500 whitespace-nowrap"><i class="fas fa-sort"></i> 並替:</span>
                     <select id="sortPrimary" class="bg-slate-100 border-none rounded px-2 py-1 text-slate-700 focus:ring-2 focus:ring-indigo-300">
-                        <option value="none">指定なし</option>
+                        <option value="none">標準（種類・名前順）</option>
                         <option value="expiry">期限が近い順</option>
                         <option value="stock">在庫が少ない順</option>
+                        <option value="name">あいうえお順</option>
                     </select>
                 </div>
                 <button onclick="openItemModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-bold shadow-md transition transform hover:scale-105 flex items-center justify-center gap-2">
@@ -129,31 +130,6 @@
                 </div>
                 <div class="p-4 text-center text-xs text-slate-400 border-t">
                     ※ 過去1週間の履歴のみ保存されます
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- AIアドバイスモーダル (Updated) -->
-    <div id="adviceModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white flex justify-between items-center shrink-0">
-                <h2 class="font-bold flex items-center gap-2"><i class="fas fa-robot"></i> AIコンシェルジュ</h2>
-                <button onclick="closeAdviceModal()" class="hover:text-indigo-200"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="p-6 overflow-y-auto">
-                <h3 id="adviceItemName" class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">商品名</h3>
-                
-                <!-- 動的にボタンを注入するエリア -->
-                <div id="adviceButtons" class="grid grid-cols-3 gap-2 mb-6"></div>
-
-                <div id="adviceResultArea" class="hidden">
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed markdown-body"></div>
-                </div>
-                
-                <div id="adviceLoading" class="hidden text-center py-8">
-                    <i class="fas fa-circle-notch fa-spin text-3xl text-indigo-500"></i>
-                    <p class="text-xs text-indigo-500 mt-2 font-bold">AIが考え中...</p>
                 </div>
             </div>
         </div>
@@ -340,17 +316,12 @@
                 <button onclick="closeSettingsModal()" class="hover:text-slate-300"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-4 overflow-y-auto space-y-6">
-                
                 <!-- クラウド設定 -->
                 <div>
                     <h3 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1"><i class="fas fa-cloud"></i> クラウド同期 (Firebase)</h3>
                     <div class="bg-slate-50 p-3 rounded text-sm">
-                        <p class="text-xs text-slate-500 mb-2">
-                            Firebaseの構成コードを貼り付けてください。<br>
-                            まずは「接続テスト」を押して成功するか確認してください。
-                        </p>
+                        <p class="text-xs text-slate-500 mb-2">Firebaseの構成コードを貼り付けてください。まずは「接続テスト」を押してください。</p>
                         <textarea id="firebaseConfigInput" class="w-full p-2 border rounded text-xs font-mono h-20 mb-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder='const firebaseConfig = { apiKey: "..." };'></textarea>
-                        
                         <div class="flex gap-2 mt-2">
                             <button id="testBtn" onclick="testConnection()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded font-bold transition text-xs flex items-center justify-center gap-2">
                                 <i class="fas fa-plug"></i> <span>接続テスト</span>
@@ -359,17 +330,13 @@
                                 <i class="fas fa-save"></i> 設定を保存
                             </button>
                         </div>
-                        <div class="text-right mt-1">
-                            <button onclick="checkSavedConfig()" class="text-xs text-indigo-500 underline">保存データ確認</button>
-                        </div>
-                        
+                        <div class="text-right mt-1"><button onclick="checkSavedConfig()" class="text-xs text-indigo-500 underline">保存データ確認</button></div>
                         <div id="connectionLog" class="mt-2 p-2 bg-black text-green-400 font-mono text-[10px] h-24 overflow-y-auto rounded hidden">
                             <div class="border-b border-gray-700 pb-1 mb-1 text-gray-400">--- 診断ログ ---</div>
                             <div id="connectionLogContent"></div>
                         </div>
                     </div>
                 </div>
-
                 <!-- AI設定 -->
                 <div>
                     <h3 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1"><i class="fas fa-key"></i> Gemini API設定</h3>
@@ -380,7 +347,6 @@
                         </button>
                     </div>
                 </div>
-
                 <!-- カテゴリ管理 -->
                 <div>
                     <h3 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1">カテゴリ管理</h3>
@@ -424,53 +390,470 @@
         </div>
     </div>
 
-    <!-- Application Script (No Module) -->
+    <!-- Application Script -->
     <script>
-        // Global variables
+        // Constants & Global
         const DEFAULT_CATEGORIES = ['食材', '日常品', '調味料'];
-        const FOOD_CATEGORIES = ['食材', '調味料', '食品', '飲料', 'お菓子']; // 食品判定用
         const STORAGE_KEY_DATA = 'ssm_app_data';
         const STORAGE_KEY_FIREBASE = 'ssm_firebase_config';
         const STORAGE_KEY_GEMINI = 'ssm_gemini_api_key';
-        
         const SHARED_APP_ID = "family_shared_v1"; 
         const COLLECTION_NAME = "inventory_data";
         const DOC_ID = "main_list";
+        const CATEGORY_COLORS = {'食材':'bg-blue-100 text-blue-800 border-blue-200','日常品':'bg-purple-100 text-purple-800 border-purple-200','調味料':'bg-amber-100 text-amber-800 border-amber-200'};
+        const DEFAULT_COLOR = 'bg-slate-100 text-slate-800 border-slate-200';
 
         window.appData = { categories: [...DEFAULT_CATEGORIES], items: [], logs: [] };
         window.currentFilter = 'all';
         window.appMode = 'local';
         window.currentExpiringItems = "";
-        window.selectedAdviceItem = null;
-        
         let db, auth; 
 
-        // --- Logger ---
-        function addLogEntry(message, type = 'info') {
-            const now = Date.now();
-            const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
-            
-            if (!window.appData.logs) window.appData.logs = [];
-            window.appData.logs = window.appData.logs.filter(l => (now - l.ts) < oneWeekMs);
-            
-            // シンプルなタイムスタンプベースID (文字列化)
-            const newId = String(now + Math.floor(Math.random()*1000));
-            
-            window.appData.logs.unshift({ id: newId, ts: now, msg: message, type: type });
-            if (window.appData.logs.length > 50) window.appData.logs.length = 50;
+        // Helper Functions (Hoisted)
+        function generateUUID() {
+            if (crypto && crypto.randomUUID) return crypto.randomUUID();
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
         }
-
+        function getCategoryColorClass(cat) { return CATEGORY_COLORS[cat] || DEFAULT_COLOR; }
         function timeAgo(ts) {
             const diff = Date.now() - ts;
             const min = 60 * 1000;
-            const hour = 60 * min;
-            const day = 24 * hour;
             if (diff < min) return 'たった今';
-            if (diff < hour) return Math.floor(diff / min) + '分前';
-            if (diff < day) return Math.floor(diff / hour) + '時間前';
-            return Math.floor(diff / day) + '日前';
+            if (diff < 60*min) return Math.floor(diff/min) + '分前';
+            if (diff < 24*60*min) return Math.floor(diff/(60*min)) + '時間前';
+            return Math.floor(diff/(24*60*min)) + '日前';
+        }
+        function parseFirebaseConfig(str) {
+            try { return JSON.parse(str); } catch(e) {}
+            const config = {};
+            const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+            let found = 0;
+            let cleanStr = str.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+            keys.forEach(key => {
+                const regex = new RegExp(`(?:["']?${key}["']?)\\s*:\\s*["'“”]([^"'“”]+)["'“”]`, 'i');
+                const match = cleanStr.match(regex);
+                if(match) { config[key] = match[1]; found++; }
+            });
+            return (found > 0 && config.apiKey) ? config : null;
+        }
+        function addLog(msg, type='info') {
+            const box = document.getElementById('connectionLog');
+            const content = document.getElementById('connectionLogContent');
+            box.classList.remove('hidden');
+            const div = document.createElement('div');
+            div.className = "mb-1 border-b border-gray-800 pb-1";
+            if(type==='error') div.className += " text-red-400";
+            if(type==='success') div.className += " text-green-300 font-bold";
+            if(type==='warn') div.className += " text-yellow-300";
+            div.innerText = `> ${msg}`;
+            content.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+        function showToast(msg, err=false) {
+            const t = document.createElement('div');
+            t.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold shadow-lg z-[100] ${err?'bg-red-500':'bg-slate-800'}`;
+            t.innerText = msg;
+            document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
         }
 
+        // Logic Functions
+        function sanitizeData() {
+            let isDirty = false;
+            const ids = new Set();
+            if(!window.appData.items) window.appData.items = [];
+            window.appData.items.forEach(item => {
+                // Ensure unique ID
+                if(!item.id || ids.has(item.id)) {
+                    item.id = generateUUID();
+                    isDirty = true;
+                }
+                ids.add(item.id);
+                // Ensure number quantity
+                if(typeof item.quantity !== 'number') {
+                    item.quantity = parseFloat(item.quantity) || 0;
+                    isDirty = true;
+                }
+            });
+            if(isDirty) {
+                console.log("Data sanitized.");
+                syncData();
+            }
+        }
+
+        function addLogEntry(message, type = 'info') {
+            const now = Date.now();
+            const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+            if (!window.appData.logs) window.appData.logs = [];
+            window.appData.logs = window.appData.logs.filter(l => (now - l.ts) < oneWeekMs);
+            const newId = String(now + Math.floor(Math.random()*1000));
+            window.appData.logs.unshift({ id: newId, ts: now, msg: message, type: type });
+            if (window.appData.logs.length > 50) window.appData.logs.length = 50;
+        }
+        
+        function loadLocalData() {
+            const stored = localStorage.getItem(STORAGE_KEY_DATA);
+            if(stored) {
+                try {
+                    const p = JSON.parse(stored);
+                    window.appData.categories = p.categories || [...DEFAULT_CATEGORIES];
+                    window.appData.items = p.items || [];
+                    window.appData.logs = p.logs || [];
+                    sanitizeData();
+                } catch(e) {}
+            }
+        }
+        
+        function setSyncStatus(isSyncing, text) {
+            const el = document.getElementById('sync-indicator');
+            const span = document.getElementById('sync-text');
+            if(!el) return;
+            span.innerText = text;
+            if(isSyncing) { el.classList.remove('synced'); el.classList.add('syncing'); }
+            else { el.classList.remove('syncing'); el.classList.add('synced'); }
+        }
+        
+        function updateModeUI() {
+            const badge = document.getElementById('appModeBadge');
+            const indicator = document.getElementById('sync-indicator');
+            const shareMode = document.getElementById('shareModalMode');
+            if(window.appMode === 'cloud') {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold mode-badge-cloud flex items-center gap-1";
+                badge.innerHTML = '<i class="fas fa-cloud"></i> Cloud';
+                indicator.classList.remove('hidden');
+                shareMode.innerText = "CLOUD (共有)";
+            } else {
+                badge.className = "text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold mode-badge-local flex items-center gap-1";
+                badge.innerHTML = '<i class="fas fa-home"></i> Local';
+                indicator.classList.add('hidden');
+                shareMode.innerText = "LOCAL (端末内)";
+            }
+        }
+
+        function getAlerts(item) {
+            const alerts = [];
+            const today = new Date(); today.setHours(0,0,0,0);
+            if(item.quantity===0 && item.zeroAction==='keep') alerts.push({type:'danger',msg:'在庫切れ'});
+            if(item.lowStockNotify && item.quantity>0 && item.quantity<=item.lowStockThreshold) alerts.push({type:'warning',msg:'残りわずか'});
+            if(item.expiryDate){
+                const d = Math.ceil((new Date(item.expiryDate)-today)/86400000);
+                if(d<0) alerts.push({type:'danger',msg:'期限切れ'});
+                else if(d<=3) alerts.push({type:'warning',msg:`あと${d}日`});
+            }
+            if(item.replacementNotify && item.openDate){
+                const op = new Date(item.openDate);
+                let tg = new Date(op);
+                let thr = 0;
+                if(item.replacementUnit==='days'){ tg.setDate(op.getDate()+parseInt(item.replacementValue)); thr=5; }
+                else if(item.replacementUnit==='weeks'){ tg.setDate(op.getDate()+(parseInt(item.replacementValue)*7)); thr=7; }
+                else{ tg.setMonth(op.getMonth()+parseInt(item.replacementValue)); thr=30; }
+                const d = Math.ceil((tg-today)/86400000);
+                if(d<=thr) alerts.push({type:'info',msg:d<0?'交換推奨':'もうすぐ交換'});
+            }
+            return alerts;
+        }
+
+        // Render Functions
+        function renderCategories() {
+            const container = document.getElementById('categoryFilters');
+            const select = document.getElementById('itemCategory');
+            const listSettings = document.getElementById('categoryListSettings');
+            let filterHtml = `<button onclick="setFilter('all')" class="category-chip px-4 py-1.5 rounded-full text-sm font-bold transition border ${window.currentFilter === 'all' ? 'bg-slate-800 text-white border-slate-800 active' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">すべて</button>`;
+            let selectHtml = `<option value="" disabled selected>選択してください</option>`;
+            let settingsHtml = '';
+            window.appData.categories.forEach(cat => {
+                const isActive = window.currentFilter === cat;
+                filterHtml += `<button onclick="setFilter('${cat}')" class="category-chip px-3 py-1.5 rounded-full text-sm font-medium transition border ${isActive ? 'ring-2 ring-indigo-500 ring-offset-1' : ''} ${getCategoryColorClass(cat)} bg-opacity-50 hover:bg-opacity-100">${cat}</button>`;
+                selectHtml += `<option value="${cat}">${cat}</option>`;
+                settingsHtml += `<li class="flex justify-between items-center bg-slate-50 p-2 rounded border"><span>${cat}</span>${DEFAULT_CATEGORIES.includes(cat) ? '<span class="text-xs text-slate-400">固定</span>' : `<button onclick="deleteCategory('${cat}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>`}</li>`;
+            });
+            container.innerHTML = filterHtml; select.innerHTML = selectHtml; listSettings.innerHTML = settingsHtml;
+        }
+
+        function renderItems() {
+            const list = document.getElementById('inventoryList');
+            const alertSec = document.getElementById('alertSection');
+            const sortMode = document.getElementById('sortPrimary').value;
+            let filtered = window.appData.items.filter(i => window.currentFilter === 'all' || i.category === window.currentFilter);
+            
+            const compareStandard = (a, b) => {
+                if (a.category !== b.category) return a.category.localeCompare(b.category, 'ja');
+                return a.name.localeCompare(b.name, 'ja');
+            };
+
+            filtered.sort((a,b) => {
+                if(sortMode === 'expiry') {
+                    const dA = a.expiryDate ? new Date(a.expiryDate).getTime() : 9e13;
+                    const dB = b.expiryDate ? new Date(b.expiryDate).getTime() : 9e13;
+                    if(dA !== dB) return dA - dB;
+                }
+                if(sortMode === 'stock') {
+                    if(a.quantity !== b.quantity) return a.quantity - b.quantity;
+                }
+                if(sortMode === 'name') {
+                   return a.name.localeCompare(b.name, 'ja');
+                }
+                return compareStandard(a, b);
+            });
+
+            list.innerHTML = ''; alertSec.innerHTML = ''; alertSec.classList.add('hidden');
+            const allAlerts = [];
+            if(filtered.length === 0) { list.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-10 text-slate-400">アイテムがありません</div>`; return; }
+
+            filtered.forEach(item => {
+                const alerts = getAlerts(item);
+                if(alerts.length) alerts.forEach(a => allAlerts.push({item, ...a}));
+                let badges = alerts.map(a => `<span class="${a.type==='danger'?'bg-red-500':a.type==='warning'?'bg-amber-500':'bg-sky-500'} text-white text-[10px] px-2 py-0.5 rounded-full mr-1">${a.msg}</span>`).join('');
+                
+                let capacityStr = '';
+                if(item.capacityValue) capacityStr = `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded ml-2">${item.capacityValue}${item.capacityUnit || ''}</span>`;
+
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-xl shadow border border-slate-100 p-4 animate-fade-in relative overflow-hidden group";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div><span class="inline-block text-xs px-2 py-0.5 rounded border mb-1 ${getCategoryColorClass(item.category)}">${item.category}</span><h3 class="font-bold text-lg text-slate-800 leading-tight">${item.name} ${capacityStr}</h3><div class="flex flex-wrap mt-1">${badges}</div></div>
+                        <div class="flex gap-2">
+                            <button onclick="editItem('${item.id}')" class="text-slate-300 hover:text-indigo-500 p-1"><i class="fas fa-edit"></i></button>
+                        </div>
+                    </div>
+                    <div class="text-sm text-slate-500 space-y-1 mb-4">
+                        <div class="flex items-center gap-2"><i class="far fa-clock w-4 text-center"></i> 期限: ${item.expiryDate || '--'}</div>
+                        ${item.openDate ? `<div class="flex items-center gap-2"><i class="far fa-folder-open w-4 text-center"></i> 開封: ${item.openDate}</div>` : ''}
+                    </div>
+                    <div class="mt-auto bg-slate-50 p-3 rounded-lg">
+                        <div class="flex justify-between items-baseline mb-2"><span class="text-xs font-bold text-slate-400">在庫数</span><span class="text-2xl font-bold ${item.quantity===0?'text-red-500':'text-slate-700'}">${item.quantity}</span></div>
+                        <div class="grid grid-cols-3 gap-1">
+                            <button onclick="updateStock('${item.id}', -1)" class="bg-white border border-slate-200 rounded py-2 text-indigo-600 hover:bg-red-50 hover:text-red-600 font-bold text-sm shadow-sm transition active:scale-95">-1</button>
+                            <button onclick="updateStock('${item.id}', -0.25)" class="bg-white border border-slate-200 rounded py-2 text-indigo-600 hover:bg-red-50 hover:text-red-600 font-bold text-xs shadow-sm transition active:scale-95">-0.25</button>
+                            <button onclick="updateStock('${item.id}', 1)" class="bg-white border border-slate-200 rounded py-2 text-indigo-600 hover:bg-indigo-50 font-bold text-sm shadow-sm transition active:scale-95">+1</button>
+                        </div>
+                    </div>`;
+                list.appendChild(card);
+            });
+
+            if(allAlerts.length) {
+                alertSec.classList.remove('hidden');
+                alertSec.innerHTML = `<div class="bg-red-50 border-l-4 border-red-500 p-3 rounded shadow-sm"><h4 class="font-bold text-red-700 text-sm mb-1"><i class="fas fa-exclamation-triangle"></i> お知らせ (${allAlerts.length}件)</h4><ul class="text-sm text-red-600 list-disc list-inside max-h-24 overflow-y-auto">${allAlerts.map(a=>`<li><b>${a.item.name}</b>: ${a.msg}</li>`).join('')}</ul></div>`;
+            }
+        }
+
+        function renderAll() {
+            renderCategories();
+            renderItems();
+            updateFormVisibility();
+        }
+
+        // --- 5. Async Logic ---
+        async function initCloudSync() {
+            setSyncStatus(true, "接続中...");
+            try { await auth.signInAnonymously(); } catch(e) { console.warn("Anon Auth Fail:", e.code); }
+            try {
+                const docRef = db.collection('artifacts').doc(SHARED_APP_ID).collection('public').doc('data').collection(COLLECTION_NAME).doc(DOC_ID);
+                docRef.onSnapshot((snap) => {
+                    setSyncStatus(true, "同期中...");
+                    if(snap.exists) { 
+                        const d = snap.data(); 
+                        window.appData.categories=d.categories||[...DEFAULT_CATEGORIES]; 
+                        window.appData.items=d.items||[]; 
+                        window.appData.logs=d.logs||[]; 
+                        sanitizeData(); // Fix IDs on sync
+                    } else if(window.appData.items.length > 0) syncData();
+                    renderAll(); setTimeout(()=>setSyncStatus(false), 500);
+                }, (err) => {
+                    console.error(err);
+                    setSyncStatus(true, "エラー");
+                });
+            } catch (err) {
+                console.error("Init Error:", err);
+                setSyncStatus(true, "DBエラー");
+            }
+        }
+
+        window.syncData = async function() {
+            if(window.appMode === 'local') { localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(window.appData)); renderAll(); }
+            else {
+                setSyncStatus(true, "保存中...");
+                try {
+                    const docRef = db.collection('artifacts').doc(SHARED_APP_ID).collection('public').doc('data').collection(COLLECTION_NAME).doc(DOC_ID);
+                    await docRef.set(window.appData);
+                } catch(e) { console.error(e); showToast("保存失敗", true); }
+            }
+        }
+
+        async function callGemini(key, base64) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+            const prompt = `この画像を分析し、商品の「名前」「個数」「カテゴリ」「期限（賞味期限または消費期限）」「内容量(数値)」「内容量単位」を特定せよ。カテゴリは[${window.appData.categories.join(',')}]から選択。JSON形式{"name":str,"quantity":num,"category":str,"expiry":"YYYY-MM-DD", "capacityValue":num, "capacityUnit":str}で返す。期限不明はnull。単位はml, L, g, kg, 枚切り, 個入, cmのいずれかに正規化すること。`;
+            const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:"image/jpeg",data:base64}}]}]})});
+            if(!res.ok) { if (res.status === 429) throw new Error("利用制限(429)"); throw new Error(res.status); }
+            const d = await res.json();
+            const txt = d.candidates[0].content.parts[0].text;
+            const m = txt.match(/\{[\s\S]*\}/);
+            return m ? JSON.parse(m[0]) : null;
+        }
+
+        async function callGeminiText(key, prompt) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+            if(!res.ok) {
+                if (res.status === 429) throw new Error("利用制限(429)に達しました。1分ほど待ってから再度お試しください。");
+                throw new Error(`API Error: ${res.status}`);
+            }
+            const d = await res.json();
+            return d.candidates[0].content.parts[0].text;
+        }
+
+        // --- 6. Handlers ---
+        window.setFilter = function(cat) { window.currentFilter = cat; renderAll(); }
+
+        window.openItemModal = function(id=null) {
+            const modal = document.getElementById('itemModal');
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            // reset
+            document.getElementById('itemId').value = '';
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemCategory').value = '';
+            document.getElementById('itemQuantity').value = 1;
+            document.getElementById('itemExpiry').value = '';
+            document.getElementById('itemOpenDate').value = '';
+            document.getElementById('itemCapacityValue').value = '';
+            document.getElementById('itemCapacityUnit').value = '';
+            document.querySelector('input[name="zeroAction"][value="keep"]').checked = true;
+            document.getElementById('lowStockNotify').checked = false;
+            document.getElementById('replacementNotify').checked = false;
+            const names = [...new Set(window.appData.items.map(i => i.name))];
+            document.getElementById('nameSuggestions').innerHTML = names.map(n => `<option value="${n}">`).join('');
+            if(id) {
+                const item = window.appData.items.find(i => i.id === id);
+                if(item) {
+                    document.getElementById('modalTitle').innerText = '在庫編集';
+                    document.getElementById('itemId').value = item.id;
+                    document.getElementById('itemName').value = item.name;
+                    document.getElementById('itemCategory').value = item.category;
+                    document.getElementById('itemQuantity').value = item.quantity;
+                    document.getElementById('itemExpiry').value = item.expiryDate||'';
+                    document.getElementById('itemOpenDate').value = item.openDate||'';
+                    document.getElementById('itemCapacityValue').value = item.capacityValue !== undefined ? item.capacityValue : '';
+                    document.getElementById('itemCapacityUnit').value = item.capacityUnit || '';
+                    document.querySelector(`input[name="zeroAction"][value="${item.zeroAction}"]`).checked = true;
+                    document.getElementById('lowStockNotify').checked = item.lowStockNotify;
+                    document.getElementById('lowStockThreshold').value = item.lowStockThreshold;
+                    document.getElementById('replacementNotify').checked = item.replacementNotify;
+                    document.getElementById('replacementValue').value = item.replacementValue;
+                    document.getElementById('replacementUnit').value = item.replacementUnit;
+                }
+            } else document.getElementById('modalTitle').innerText = '在庫登録';
+            updateFormVisibility();
+            modal.classList.remove('hidden');
+        }
+        window.closeItemModal = () => document.getElementById('itemModal').classList.add('hidden');
+        window.updateFormVisibility = () => {
+            document.getElementById('lowStockConfig').style.display = document.getElementById('lowStockNotify').checked ? 'block' : 'none';
+            document.getElementById('replacementConfig').style.display = document.getElementById('replacementNotify').checked ? 'flex' : 'none';
+        }
+
+        window.saveItem = () => {
+            const id = document.getElementById('itemId').value;
+            const name = document.getElementById('itemName').value.trim();
+            const category = document.getElementById('itemCategory').value;
+            const quantity = parseFloat(document.getElementById('itemQuantity').value);
+            const expiryDate = document.getElementById('itemExpiry').value || null;
+            if(!name || !category) return alert('商品名とカテゴリは必須です');
+            if(!id) {
+                const dup = window.appData.items.find(i=>i.name===name);
+                if(dup && dup.category!==category && !confirm(`別カテゴリ「${dup.category}」に同名商品があります。登録しますか？`)) return;
+            }
+            const capVal = document.getElementById('itemCapacityValue').value;
+            const capUnit = document.getElementById('itemCapacityUnit').value;
+            const item = {
+                id: id || generateUUID(),
+                name, category, quantity, expiryDate,
+                capacityValue: capVal ? parseFloat(capVal) : null,
+                capacityUnit: capUnit,
+                openDate: document.getElementById('itemOpenDate').value || null,
+                zeroAction: document.querySelector('input[name="zeroAction"]:checked').value,
+                lowStockNotify: document.getElementById('lowStockNotify').checked,
+                lowStockThreshold: parseFloat(document.getElementById('lowStockThreshold').value),
+                replacementNotify: document.getElementById('replacementNotify').checked,
+                replacementValue: parseInt(document.getElementById('replacementValue').value),
+                replacementUnit: document.getElementById('replacementUnit').value
+            };
+            if(id) {
+                window.appData.items[window.appData.items.findIndex(i=>i.id===id)] = item;
+                addLogEntry(`「${name}」を編集しました`, 'edit');
+            } else {
+                window.appData.items.push(item);
+                addLogEntry(`「${name}」を新規登録しました (${quantity}個)`, 'add');
+            }
+            syncData(); closeItemModal();
+            if(!id && window.currentFilter!=='all' && window.currentFilter!==category) setFilter(category);
+        }
+
+        window.editItem = (id) => openItemModal(id);
+        window.updateStock = (id, change) => {
+            const item = window.appData.items.find(i=>i.id===id);
+            if(!item) return;
+            let n = (item.quantity * 100 + change * 100) / 100;
+            if(n<0) return;
+            if(n===0 && change<0 && item.zeroAction==='delete') {
+                if(confirm(`「${item.name}」を削除しますか？`)) {
+                    window.appData.items = window.appData.items.filter(i=>i.id!==id);
+                    addLogEntry(`「${item.name}」を削除しました`, 'delete');
+                    syncData(); return;
+                }
+            }
+            const diffStr = change > 0 ? `+${change}` : `${change}`;
+            addLogEntry(`「${item.name}」の在庫を更新: ${item.quantity} → ${n} (${diffStr})`, 'update');
+            item.quantity = n; syncData();
+        }
+
+        window.openSettingsModal = () => document.getElementById('settingsModal').classList.remove('hidden');
+        window.closeSettingsModal = () => document.getElementById('settingsModal').classList.add('hidden');
+        window.openDataModal = () => {
+            const json = JSON.stringify(window.appData);
+            const spell = btoa(unescape(encodeURIComponent(json)));
+            document.getElementById('exportString').value = spell;
+            document.getElementById('importString').value = '';
+            document.getElementById('dataModal').classList.remove('hidden');
+        }
+        window.closeDataModal = () => document.getElementById('dataModal').classList.add('hidden');
+        window.addCategory = () => {
+            const v = document.getElementById('newCategoryName').value.trim();
+            if(v && !window.appData.categories.includes(v)) { window.appData.categories.push(v); document.getElementById('newCategoryName').value=''; syncData(); renderCategories(); }
+        }
+        window.deleteCategory = (cat) => { if(confirm(`カテゴリ「${cat}」を削除しますか？`)) { window.appData.categories=window.appData.categories.filter(c=>c!==cat); syncData(); renderCategories(); } }
+        window.copyExportString = () => {
+            const input = document.getElementById('exportString'); input.select(); input.setSelectionRange(0, 99999);
+            try {
+                if(document.execCommand('copy')) showToast('コピーしました');
+                else if(navigator.clipboard) navigator.clipboard.writeText(input.value).then(()=>showToast('コピーしました'));
+            } catch(e) { showToast('コピー失敗', true); }
+        }
+        window.shareData = async () => {
+            const text = document.getElementById('exportString').value;
+            if(navigator.share) await navigator.share({title:'SSM在庫', text}); else copyExportString();
+        }
+        window.importData = () => {
+            const v = document.getElementById('importString').value.trim();
+            if(!v) return;
+            try {
+                const p = JSON.parse(decodeURIComponent(escape(atob(v))));
+                if(p.categories && Array.isArray(p.items) && confirm('現在のデータを上書きしますか？')) {
+                    window.appData = p; 
+                    addLogEntry('データをインポートしました', 'info');
+                    sanitizeData(); // Fix IDs
+                    syncData(); alert('完了'); renderAll(); closeDataModal();
+                }
+            } catch(e) { alert('データ形式エラー'); }
+        }
+
+        // --- Log Modal ---
         window.openLogModal = function() {
             const modal = document.getElementById('logModal');
             const container = document.getElementById('logListContainer');
@@ -479,7 +862,7 @@
             if (window.appData.logs) {
                 let needSave = false;
                 window.appData.logs.forEach((l, idx) => {
-                    if (!l.id) { l.id = String(l.ts + idx); needSave = true; } // ID補完
+                    if (!l.id) { l.id = String(l.ts + idx); needSave = true; } 
                 });
                 if (needSave) syncData();
             }
@@ -489,7 +872,6 @@
                 return;
             }
 
-            // data-id属性を使って確実にIDを渡す
             container.innerHTML = window.appData.logs.map(log => {
                 let icon = 'fa-info-circle text-gray-400';
                 if(log.msg.includes('登録')) icon = 'fa-plus-circle text-green-500';
@@ -516,7 +898,6 @@
             }).join('');
         }
 
-        // 新しい削除関数（属性からIDを取得）
         window.deleteLogFromAttr = function(btn) {
             const id = btn.getAttribute('data-id');
             if(confirm('この履歴を削除しますか？')) {
@@ -526,350 +907,9 @@
                 showToast("履歴を削除しました");
             }
         }
-
         window.closeLogModal = () => document.getElementById('logModal').classList.add('hidden');
 
-        // --- Advice Feature (Updated for Categories) ---
-        window.openAdviceModal = function(id) {
-            const item = window.appData.items.find(i => i.id === id);
-            if(!item) return;
-            window.selectedAdviceItem = item;
-            
-            document.getElementById('adviceItemName').innerText = item.name;
-            document.getElementById('adviceResultArea').classList.add('hidden');
-            document.getElementById('adviceResultArea').querySelector('.markdown-body').innerHTML = '';
-            document.getElementById('adviceLoading').classList.add('hidden');
-            
-            // カテゴリ判定
-            const isFood = FOOD_CATEGORIES.includes(item.category);
-            const btnContainer = document.getElementById('adviceButtons');
-            
-            if (isFood) {
-                // 食品用ボタン
-                btnContainer.innerHTML = `
-                    <button onclick="askAI('storage')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
-                        <i class="fas fa-box-open text-xl"></i><span class="text-xs font-bold">保存のコツ</span>
-                    </button>
-                    <button onclick="askAI('nutrition')" class="bg-green-50 hover:bg-green-100 text-green-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
-                        <i class="fas fa-leaf text-xl"></i><span class="text-xs font-bold">栄養素</span>
-                    </button>
-                    <button onclick="askAI('recipe')" class="bg-orange-50 hover:bg-orange-100 text-orange-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
-                        <i class="fas fa-utensils text-xl"></i><span class="text-xs font-bold">使い切り</span>
-                    </button>
-                `;
-            } else {
-                // 日用品用ボタン
-                btnContainer.innerHTML = `
-                    <button onclick="askAI('storage_goods')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
-                        <i class="fas fa-archive text-xl"></i><span class="text-xs font-bold">保管・管理</span>
-                    </button>
-                    <button onclick="askAI('usage_goods')" class="bg-purple-50 hover:bg-purple-100 text-purple-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
-                        <i class="fas fa-lightbulb text-xl"></i><span class="text-xs font-bold">活用・裏技</span>
-                    </button>
-                    <button onclick="askAI('disposal_goods')" class="bg-red-50 hover:bg-red-100 text-red-700 p-3 rounded-lg flex flex-col items-center gap-1 transition">
-                        <i class="fas fa-trash-alt text-xl"></i><span class="text-xs font-bold">注意・廃棄</span>
-                    </button>
-                `;
-            }
-
-            document.getElementById('adviceModal').classList.remove('hidden');
-        }
-
-        window.closeAdviceModal = () => document.getElementById('adviceModal').classList.add('hidden');
-
-        window.askAI = async function(type) {
-            const apiKey = localStorage.getItem(STORAGE_KEY_GEMINI);
-            if (!apiKey) { alert('Gemini APIキーを設定してください'); return; }
-            
-            const item = window.selectedAdviceItem;
-            if(!item) return;
-
-            // Check marked library
-            if (typeof marked === 'undefined') {
-                alert("現在、表示機能の準備中です。もう一度お試しください。");
-                return;
-            }
-
-            const resArea = document.getElementById('adviceResultArea');
-            const mdBody = resArea.querySelector('.markdown-body');
-            const loading = document.getElementById('adviceLoading');
-
-            resArea.classList.add('hidden');
-            mdBody.innerHTML = '';
-            loading.classList.remove('hidden');
-
-            let prompt = "";
-            switch(type) {
-                // Food
-                case 'storage': prompt = `「${item.name}」の最適な保存方法（冷蔵・冷凍・常温）と、鮮度を保つコツを簡潔に教えてください。`; break;
-                case 'nutrition': prompt = `「${item.name}」に含まれる主な栄養素と、期待できる健康効果を簡潔に教えてください。`; break;
-                case 'recipe': prompt = `「${item.name}」をメインに使った、誰でも作れる簡単な使い切りレシピを1つだけ提案してください。材料と手順を短くまとめてください。`; break;
-                // Goods
-                case 'storage_goods': prompt = `「${item.name}」の品質を保つための最適な保管場所や、管理上の注意点を簡潔に教えてください。`; break;
-                case 'usage_goods': prompt = `「${item.name}」の便利な使い方、意外な活用法、または効率的な使用量を簡潔に教えてください。`; break;
-                case 'disposal_goods': prompt = `「${item.name}」を廃棄する際の一般的な分別区分や、取り扱いの注意点（危険性など）を簡潔に教えてください。`; break;
-            }
-
-            try {
-                const text = await callGeminiText(apiKey, prompt);
-                mdBody.innerHTML = marked.parse(text);
-                resArea.classList.remove('hidden');
-            } catch(e) {
-                alert("AI生成エラー: " + e.message);
-            } finally {
-                loading.classList.add('hidden');
-            }
-        }
-
-        // --- Config Parser ---
-        function parseFirebaseConfig(str) {
-            try { return JSON.parse(str); } catch(e) {}
-            const config = {};
-            const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-            let found = 0;
-            let cleanStr = str.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-            keys.forEach(key => {
-                const regex = new RegExp(`(?:["']?${key}["']?)\\s*:\\s*["'“”]([^"'“”]+)["'“”]`, 'i');
-                const match = cleanStr.match(regex);
-                if(match) { config[key] = match[1]; found++; }
-            });
-            return (found > 0 && config.apiKey) ? config : null;
-        }
-
-        // --- Log Util ---
-        function addLog(msg, type='info') {
-            const box = document.getElementById('connectionLog');
-            const content = document.getElementById('connectionLogContent');
-            box.classList.remove('hidden');
-            const div = document.createElement('div');
-            div.className = "mb-1 border-b border-gray-800 pb-1";
-            if(type==='error') div.className += " text-red-400";
-            if(type==='success') div.className += " text-green-300 font-bold";
-            if(type==='warn') div.className += " text-yellow-300";
-            div.innerText = `> ${msg}`;
-            content.appendChild(div);
-            box.scrollTop = box.scrollHeight;
-        }
-
-        // --- Connection Test ---
-        window.testConnection = async function() {
-            const btn = document.getElementById('testBtn');
-            const box = document.getElementById('connectionLog');
-            const content = document.getElementById('connectionLogContent');
-            content.innerHTML = '';
-            box.classList.remove('hidden');
-            const val = document.getElementById('firebaseConfigInput').value.trim();
-            if(!val) { addLog('エラー: コードが空です', 'error'); return; }
-            const config = parseFirebaseConfig(val);
-            if(!config) { addLog('エラー: 解析失敗。形式を確認してください', 'error'); return; }
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 通信中...';
-            btn.disabled = true;
-            addLog(`解析OK: ProjectID=${config.projectId}`);
-            try {
-                if (typeof firebase === 'undefined') throw new Error('Firebase SDKがロードされていません');
-                if (firebase.apps.length === 0) {}
-                const tempApp = firebase.initializeApp(config, "testApp_" + Date.now());
-                const tempAuth = tempApp.auth();
-                const tempDb = tempApp.firestore();
-                addLog('認証試行(匿名)...');
-                try {
-                    await tempAuth.signInAnonymously();
-                    addLog('認証成功', 'success');
-                } catch (authErr) {
-                    addLog(`認証スキップ(警告): ${authErr.code}`, 'warn');
-                }
-                addLog('データベース接続確認...');
-                try {
-                    const testRef = tempDb.collection('artifacts').doc('connection_test');
-                    await testRef.get();
-                    addLog('DB読み取り成功！', 'success');
-                    addLog('テスト完了！「設定を保存」を押してください', 'success');
-                    alert('接続成功！設定を保存してください。');
-                } catch (dbErr) {
-                    if(dbErr.code === 'permission-denied') throw new Error('権限エラー: セキュリティルールを確認してください');
-                    else throw dbErr;
-                }
-            } catch(e) {
-                console.error(e);
-                addLog(`失敗: ${e.message}`, 'error');
-                alert(`接続テスト失敗:\n${e.message}`);
-            } finally {
-                btn.innerHTML = '<i class="fas fa-plug"></i> 接続テスト';
-                btn.disabled = false;
-            }
-        }
-
-        window.saveFirebaseConfig = function(btn) {
-            try {
-                const inputEl = document.getElementById('firebaseConfigInput');
-                const val = inputEl.value.trim();
-                if(!val) {
-                    if(confirm('Firebase設定を削除してローカルモードに戻りますか？')) {
-                        localStorage.removeItem(STORAGE_KEY_FIREBASE);
-                        alert('設定を削除しました。画面を更新してください。');
-                        location.reload();
-                    }
-                    return;
-                }
-                const config = parseFirebaseConfig(val);
-                if(!config) { alert('コードの解析に失敗しました。'); return; }
-                localStorage.setItem(STORAGE_KEY_FIREBASE, val);
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> 保存しました！';
-                btn.classList.remove('bg-slate-700', 'hover:bg-slate-600');
-                btn.classList.add('bg-green-600', 'hover:bg-green-500');
-                showToast("設定を保存しました。ブラウザを更新してください。");
-                setTimeout(() => {
-                    alert('設定を保存しました。\n\n【重要】\n設定を反映させるため、ブラウザの更新ボタンを押してページを再読み込みしてください。');
-                    btn.innerHTML = originalText;
-                    btn.classList.add('bg-slate-700', 'hover:bg-slate-600');
-                    btn.classList.remove('bg-green-600', 'hover:bg-green-500');
-                }, 500);
-            } catch(e) {
-                console.error(e);
-                alert('保存中にエラーが発生しました: ' + e.message);
-            }
-        }
-
-        window.checkSavedConfig = function() {
-            const saved = localStorage.getItem(STORAGE_KEY_FIREBASE);
-            if(saved) {
-                alert('【保存されている設定データ】\n' + saved.substring(0, 100) + '...\n(データは存在します)');
-            } else {
-                alert('保存されている設定データはありません。');
-            }
-        }
-
-        window.saveApiKey = function() {
-            const key = document.getElementById('geminiApiKey').value.trim();
-            if(key) { localStorage.setItem(STORAGE_KEY_GEMINI, key); alert('保存しました'); }
-        }
-
-        function initApp() {
-            const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
-            if(gKey) document.getElementById('geminiApiKey').value = gKey;
-            const fbConfigStr = localStorage.getItem(STORAGE_KEY_FIREBASE);
-            if(fbConfigStr) {
-                document.getElementById('firebaseConfigInput').value = fbConfigStr;
-                try {
-                    const config = parseFirebaseConfig(fbConfigStr);
-                    if(config && config.apiKey) {
-                        if (!firebase.apps.length) firebase.initializeApp(config);
-                        else firebase.app();
-                        db = firebase.firestore();
-                        auth = firebase.auth();
-                        window.appMode = 'cloud';
-                    }
-                } catch(e) {
-                    console.error('Firebase Init Failed:', e);
-                    window.appMode = 'local';
-                    showErrorBanner(`クラウド初期化エラー: ${e.message}`);
-                }
-            }
-            updateModeUI();
-            if(window.appMode === 'cloud') initCloudSync();
-            else { loadLocalData(); renderAll(); }
-            setupEventListeners();
-        }
-
-        function showErrorBanner(msg) {
-            const banner = document.getElementById('globalErrorBanner');
-            const txt = document.getElementById('globalErrorMessage');
-            if(banner && txt) { txt.innerText = msg; banner.classList.remove('hidden'); }
-        }
-
-        function loadLocalData() {
-            const stored = localStorage.getItem(STORAGE_KEY_DATA);
-            if(stored) {
-                try {
-                    const p = JSON.parse(stored);
-                    window.appData.categories = p.categories || [...DEFAULT_CATEGORIES];
-                    window.appData.items = p.items || [];
-                    window.appData.logs = p.logs || [];
-                } catch(e) {}
-            }
-        }
-
-        async function initCloudSync() {
-            setSyncStatus(true, "接続中...");
-            try { await auth.signInAnonymously(); } catch(e) { console.warn("Anon Auth Fail (Ignored):", e.code); }
-            try {
-                const docRef = db.collection('artifacts').doc(SHARED_APP_ID)
-                                 .collection('public').doc('data')
-                                 .collection(COLLECTION_NAME).doc(DOC_ID);
-                docRef.onSnapshot((snap) => {
-                    setSyncStatus(true, "同期中...");
-                    if(snap.exists) {
-                        const d = snap.data();
-                        window.appData.categories = d.categories || [...DEFAULT_CATEGORIES];
-                        window.appData.items = d.items || [];
-                        window.appData.logs = d.logs || [];
-                    } else if (window.appData.items.length > 0) syncData();
-                    renderAll();
-                    setTimeout(() => setSyncStatus(false), 500);
-                }, (err) => {
-                    console.error(err);
-                    setSyncStatus(true, "エラー");
-                });
-            } catch (err) {
-                console.error("Firestore Init Error:", err);
-                setSyncStatus(true, "DBエラー");
-                showToast(`DB接続エラー: ${err.message}`, true);
-            }
-        }
-
-        window.syncData = async function() {
-            if(window.appMode === 'local') {
-                localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(window.appData));
-                renderAll();
-            } else {
-                setSyncStatus(true, "保存中...");
-                try {
-                    const docRef = db.collection('artifacts').doc(SHARED_APP_ID)
-                                     .collection('public').doc('data')
-                                     .collection(COLLECTION_NAME).doc(DOC_ID);
-                    await docRef.set(window.appData);
-                } catch(e) {
-                    console.error(e);
-                    setSyncStatus(true, "保存失敗");
-                    showToast("保存に失敗しました", true);
-                }
-            }
-        }
-
-        function updateModeUI() {
-            const badge = document.getElementById('appModeBadge');
-            const indicator = document.getElementById('sync-indicator');
-            const shareMode = document.getElementById('shareModalMode');
-            if(window.appMode === 'cloud') {
-                badge.className = "text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold mode-badge-cloud flex items-center gap-1";
-                badge.innerHTML = '<i class="fas fa-cloud"></i> Cloud';
-                indicator.classList.remove('hidden');
-                shareMode.innerText = "CLOUD (共有)";
-            } else {
-                badge.className = "text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold mode-badge-local flex items-center gap-1";
-                badge.innerHTML = '<i class="fas fa-home"></i> Local';
-                indicator.classList.add('hidden');
-                shareMode.innerText = "LOCAL (端末内)";
-            }
-        }
-
-        function setSyncStatus(isSyncing, text) {
-            const el = document.getElementById('sync-indicator');
-            const span = document.getElementById('sync-text');
-            if(!el) return;
-            span.innerText = text;
-            if(isSyncing) { el.classList.remove('synced'); el.classList.add('syncing'); }
-            else { el.classList.remove('syncing'); el.classList.add('synced'); }
-        }
-
-        function renderAll() {
-            renderCategories();
-            renderItems();
-            updateFormVisibility();
-        }
-
-        // --- Advice & Recipe ---
+        // --- Recipe & Advice ---
         window.openRecipeModal = function() {
             const modal = document.getElementById('recipeModal');
             const listEl = document.getElementById('expiringItemsList');
@@ -933,352 +973,41 @@
             }
         }
 
-        // --- UI ---
-        const CATEGORY_COLORS = {'食材':'bg-blue-100 text-blue-800 border-blue-200','日常品':'bg-purple-100 text-purple-800 border-purple-200','調味料':'bg-amber-100 text-amber-800 border-amber-200'};
-        const DEFAULT_COLOR = 'bg-slate-100 text-slate-800 border-slate-200';
-        window.getCategoryColorClass = (cat) => CATEGORY_COLORS[cat] || DEFAULT_COLOR;
-
-        window.getAlerts = function(item) {
-            const alerts = [];
-            const today = new Date(); today.setHours(0,0,0,0);
-            if(item.quantity===0 && item.zeroAction==='keep') alerts.push({type:'danger',msg:'在庫切れ'});
-            if(item.lowStockNotify && item.quantity>0 && item.quantity<=item.lowStockThreshold) alerts.push({type:'warning',msg:'残りわずか'});
-            if(item.expiryDate){
-                const d = Math.ceil((new Date(item.expiryDate)-today)/86400000);
-                if(d<0) alerts.push({type:'danger',msg:'期限切れ'});
-                else if(d<=3) alerts.push({type:'warning',msg:`あと${d}日`});
-            }
-            if(item.replacementNotify && item.openDate){
-                const op = new Date(item.openDate);
-                let tg = new Date(op);
-                let thr = 0;
-                if(item.replacementUnit==='days'){ tg.setDate(op.getDate()+parseInt(item.replacementValue)); thr=5; }
-                else if(item.replacementUnit==='weeks'){ tg.setDate(op.getDate()+(parseInt(item.replacementValue)*7)); thr=7; }
-                else{ tg.setMonth(op.getMonth()+parseInt(item.replacementValue)); thr=30; }
-                const d = Math.ceil((tg-today)/86400000);
-                if(d<=thr) alerts.push({type:'info',msg:d<0?'交換推奨':'もうすぐ交換'});
-            }
-            return alerts;
-        }
-
-        window.renderCategories = function() {
-            const container = document.getElementById('categoryFilters');
-            const select = document.getElementById('itemCategory');
-            const listSettings = document.getElementById('categoryListSettings');
-            let filterHtml = `<button onclick="setFilter('all')" class="category-chip px-4 py-1.5 rounded-full text-sm font-bold transition border ${window.currentFilter === 'all' ? 'bg-slate-800 text-white border-slate-800 active' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">すべて</button>`;
-            let selectHtml = `<option value="" disabled selected>選択してください</option>`;
-            let settingsHtml = '';
-            window.appData.categories.forEach(cat => {
-                const isActive = window.currentFilter === cat;
-                filterHtml += `<button onclick="setFilter('${cat}')" class="category-chip px-3 py-1.5 rounded-full text-sm font-medium transition border ${isActive ? 'ring-2 ring-indigo-500 ring-offset-1' : ''} ${window.getCategoryColorClass(cat)} bg-opacity-50 hover:bg-opacity-100">${cat}</button>`;
-                selectHtml += `<option value="${cat}">${cat}</option>`;
-                settingsHtml += `<li class="flex justify-between items-center bg-slate-50 p-2 rounded border"><span>${cat}</span>${DEFAULT_CATEGORIES.includes(cat) ? '<span class="text-xs text-slate-400">固定</span>' : `<button onclick="deleteCategory('${cat}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>`}</li>`;
-            });
-            container.innerHTML = filterHtml; select.innerHTML = selectHtml; listSettings.innerHTML = settingsHtml;
-        }
-
-        window.setFilter = function(cat) { window.currentFilter = cat; renderAll(); }
-
-        window.renderItems = function() {
-            const list = document.getElementById('inventoryList');
-            const alertSec = document.getElementById('alertSection');
-            const sortMode = document.getElementById('sortPrimary').value;
-            let filtered = window.appData.items.filter(i => window.currentFilter === 'all' || i.category === window.currentFilter);
-            
-            filtered.sort((a,b) => {
-                if(sortMode === 'expiry') {
-                    const dA = a.expiryDate ? new Date(a.expiryDate).getTime() : 9e13;
-                    const dB = b.expiryDate ? new Date(b.expiryDate).getTime() : 9e13;
-                    if(dA !== dB) return dA - dB;
-                }
-                if(sortMode === 'stock') if(a.quantity !== b.quantity) return a.quantity - b.quantity;
-                return 0;
-            });
-
-            list.innerHTML = ''; alertSec.innerHTML = ''; alertSec.classList.add('hidden');
-            const allAlerts = [];
-            
-            if(filtered.length === 0) {
-                list.innerHTML = `<div class="col-span-1 md:col-span-2 text-center py-10 text-slate-400">アイテムがありません</div>`;
-                return;
-            }
-
-            filtered.forEach(item => {
-                const alerts = getAlerts(item);
-                if(alerts.length) alerts.forEach(a => allAlerts.push({item, ...a}));
-                let badges = alerts.map(a => `<span class="${a.type==='danger'?'bg-red-500':a.type==='warning'?'bg-amber-500':'bg-sky-500'} text-white text-[10px] px-2 py-0.5 rounded-full mr-1">${a.msg}</span>`).join('');
-                
-                let capacityStr = '';
-                if(item.capacityValue) {
-                    capacityStr = `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded ml-2">${item.capacityValue}${item.capacityUnit || ''}</span>`;
-                }
-
-                const card = document.createElement('div');
-                card.className = "bg-white rounded-xl shadow border border-slate-100 p-4 animate-fade-in relative overflow-hidden group";
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div><span class="inline-block text-xs px-2 py-0.5 rounded border mb-1 ${getCategoryColorClass(item.category)}">${item.category}</span><h3 class="font-bold text-lg text-slate-800 leading-tight">${item.name} ${capacityStr}</h3><div class="flex flex-wrap mt-1">${badges}</div></div>
-                        <div class="flex gap-2">
-                            <button onclick="openAdviceModal('${item.id}')" class="text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1" title="AIコンシェルジュ"><i class="fas fa-robot"></i> AI</button>
-                            <button onclick="editItem('${item.id}')" class="text-slate-300 hover:text-indigo-500 p-1"><i class="fas fa-edit"></i></button>
-                        </div>
-                    </div>
-                    <div class="text-sm text-slate-500 space-y-1 mb-4">
-                        <div class="flex items-center gap-2"><i class="far fa-clock w-4 text-center"></i> 期限: ${item.expiryDate || '--'}</div>
-                        ${item.openDate ? `<div class="flex items-center gap-2"><i class="far fa-folder-open w-4 text-center"></i> 開封: ${item.openDate}</div>` : ''}
-                    </div>
-                    <div class="mt-auto bg-slate-50 p-3 rounded-lg">
-                        <div class="flex justify-between items-baseline mb-2"><span class="text-xs font-bold text-slate-400">在庫数</span><span class="text-2xl font-bold ${item.quantity===0?'text-red-500':'text-slate-700'}">${item.quantity}</span></div>
-                        <div class="grid grid-cols-3 gap-1">
-                            <button onclick="updateStock('${item.id}', -1)" class="bg-white border border-slate-200 rounded py-2 text-indigo-600 hover:bg-red-50 hover:text-red-600 font-bold text-sm shadow-sm transition active:scale-95">-1</button>
-                            <button onclick="updateStock('${item.id}', -0.25)" class="bg-white border border-slate-200 rounded py-2 text-indigo-600 hover:bg-red-50 hover:text-red-600 font-bold text-xs shadow-sm transition active:scale-95">-0.25</button>
-                            <button onclick="updateStock('${item.id}', 1)" class="bg-white border border-slate-200 rounded py-2 text-indigo-600 hover:bg-indigo-50 font-bold text-sm shadow-sm transition active:scale-95">+1</button>
-                        </div>
-                    </div>`;
-                list.appendChild(card);
-            });
-
-            if(allAlerts.length) {
-                alertSec.classList.remove('hidden');
-                alertSec.innerHTML = `<div class="bg-red-50 border-l-4 border-red-500 p-3 rounded shadow-sm"><h4 class="font-bold text-red-700 text-sm mb-1"><i class="fas fa-exclamation-triangle"></i> お知らせ (${allAlerts.length}件)</h4><ul class="text-sm text-red-600 list-disc list-inside max-h-24 overflow-y-auto">${allAlerts.map(a=>`<li><b>${a.item.name}</b>: ${a.msg}</li>`).join('')}</ul></div>`;
-            }
-        }
-
-        // --- Controls & AI ---
+        // --- Event Setup ---
         function setupEventListeners() {
             document.getElementById('sortPrimary').addEventListener('change', renderItems);
             document.getElementById('lowStockNotify').addEventListener('change', updateFormVisibility);
             document.getElementById('replacementNotify').addEventListener('change', updateFormVisibility);
         }
 
-        // (Other window functions like openItemModal, saveItem, etc. are identical to previous)
-        window.openItemModal = function(id=null) {
-            const modal = document.getElementById('itemModal');
-            document.getElementById('loadingOverlay').classList.add('hidden');
-            // reset
-            document.getElementById('itemId').value = '';
-            document.getElementById('itemName').value = '';
-            document.getElementById('itemCategory').value = '';
-            document.getElementById('itemQuantity').value = 1;
-            document.getElementById('itemExpiry').value = '';
-            document.getElementById('itemOpenDate').value = '';
-            document.getElementById('itemCapacityValue').value = ''; // Reset capacity
-            document.getElementById('itemCapacityUnit').value = ''; // Reset unit
-            
-            document.querySelector('input[name="zeroAction"][value="keep"]').checked = true;
-            document.getElementById('lowStockNotify').checked = false;
-            document.getElementById('replacementNotify').checked = false;
-
-            const names = [...new Set(window.appData.items.map(i => i.name))];
-            document.getElementById('nameSuggestions').innerHTML = names.map(n => `<option value="${n}">`).join('');
-
-            if(id) {
-                const item = window.appData.items.find(i => i.id === id);
-                if(item) {
-                    document.getElementById('modalTitle').innerText = '在庫編集';
-                    document.getElementById('itemId').value = item.id;
-                    document.getElementById('itemName').value = item.name;
-                    document.getElementById('itemCategory').value = item.category;
-                    document.getElementById('itemQuantity').value = item.quantity;
-                    document.getElementById('itemExpiry').value = item.expiryDate||'';
-                    document.getElementById('itemOpenDate').value = item.openDate||'';
-                    // Capacity load
-                    document.getElementById('itemCapacityValue').value = item.capacityValue !== undefined ? item.capacityValue : '';
-                    document.getElementById('itemCapacityUnit').value = item.capacityUnit || '';
-
-                    document.querySelector(`input[name="zeroAction"][value="${item.zeroAction}"]`).checked = true;
-                    document.getElementById('lowStockNotify').checked = item.lowStockNotify;
-                    document.getElementById('lowStockThreshold').value = item.lowStockThreshold;
-                    document.getElementById('replacementNotify').checked = item.replacementNotify;
-                    document.getElementById('replacementValue').value = item.replacementValue;
-                    document.getElementById('replacementUnit').value = item.replacementUnit;
-                }
-            } else document.getElementById('modalTitle').innerText = '在庫登録';
-            updateFormVisibility();
-            modal.classList.remove('hidden');
-        }
-        window.closeItemModal = () => document.getElementById('itemModal').classList.add('hidden');
-        window.updateFormVisibility = () => {
-            document.getElementById('lowStockConfig').style.display = document.getElementById('lowStockNotify').checked ? 'block' : 'none';
-            document.getElementById('replacementConfig').style.display = document.getElementById('replacementNotify').checked ? 'flex' : 'none';
-        }
-        window.saveItem = () => {
-            const id = document.getElementById('itemId').value;
-            const name = document.getElementById('itemName').value.trim();
-            const category = document.getElementById('itemCategory').value;
-            const quantity = parseFloat(document.getElementById('itemQuantity').value);
-            const expiryDate = document.getElementById('itemExpiry').value || null;
-            if(!name || !category) return alert('商品名とカテゴリは必須です');
-            if(!id) {
-                const dup = window.appData.items.find(i=>i.name===name);
-                if(dup && dup.category!==category && !confirm(`別カテゴリ「${dup.category}」に同名商品があります。登録しますか？`)) return;
-            }
-            
-            const capVal = document.getElementById('itemCapacityValue').value;
-            const capUnit = document.getElementById('itemCapacityUnit').value;
-
-            const item = {
-                id: id || crypto.randomUUID(),
-                name, category, quantity, expiryDate,
-                capacityValue: capVal ? parseFloat(capVal) : null,
-                capacityUnit: capUnit,
-                openDate: document.getElementById('itemOpenDate').value || null,
-                zeroAction: document.querySelector('input[name="zeroAction"]:checked').value,
-                lowStockNotify: document.getElementById('lowStockNotify').checked,
-                lowStockThreshold: parseFloat(document.getElementById('lowStockThreshold').value),
-                replacementNotify: document.getElementById('replacementNotify').checked,
-                replacementValue: parseInt(document.getElementById('replacementValue').value),
-                replacementUnit: document.getElementById('replacementUnit').value
-            };
-            if(id) {
-                // 編集ログ
-                window.appData.items[window.appData.items.findIndex(i=>i.id===id)] = item;
-                addLogEntry(`「${name}」を編集しました`, 'edit');
-            } else {
-                // 新規ログ
-                window.appData.items.push(item);
-                addLogEntry(`「${name}」を新規登録しました (${quantity}個)`, 'add');
-            }
-            syncData(); closeItemModal();
-            if(!id && window.currentFilter!=='all' && window.currentFilter!==category) setFilter(category);
-        }
-        window.editItem = (id) => openItemModal(id);
-        window.updateStock = (id, change) => {
-            const item = window.appData.items.find(i=>i.id===id);
-            if(!item) return;
-            let n = (item.quantity * 100 + change * 100) / 100;
-            if(n<0) return;
-            if(n===0 && change<0 && item.zeroAction==='delete') {
-                if(confirm(`「${item.name}」を削除しますか？`)) {
-                    window.appData.items = window.appData.items.filter(i=>i.id!==id);
-                    addLogEntry(`「${item.name}」を削除しました`, 'delete');
-                    syncData(); return;
+        // --- 7. Start App ---
+        function initApp() {
+            const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
+            if(gKey) document.getElementById('geminiApiKey').value = gKey;
+            const fbConfigStr = localStorage.getItem(STORAGE_KEY_FIREBASE);
+            if(fbConfigStr) {
+                document.getElementById('firebaseConfigInput').value = fbConfigStr;
+                try {
+                    const config = parseFirebaseConfig(fbConfigStr);
+                    if(config && config.apiKey) {
+                        if (!firebase.apps.length) firebase.initializeApp(config);
+                        else firebase.app();
+                        db = firebase.firestore();
+                        auth = firebase.auth();
+                        window.appMode = 'cloud';
+                    }
+                } catch(e) {
+                    console.error('Firebase Init Failed:', e);
+                    window.appMode = 'local';
+                    showErrorBanner(`クラウド初期化エラー: ${e.message}`);
                 }
             }
-            
-            // 在庫増減ログ
-            const diffStr = change > 0 ? `+${change}` : `${change}`;
-            addLogEntry(`「${item.name}」の在庫を更新: ${item.quantity} → ${n} (${diffStr})`, 'update');
-
-            item.quantity = n; syncData();
-        }
-        window.openSettingsModal = () => document.getElementById('settingsModal').classList.remove('hidden');
-        window.closeSettingsModal = () => document.getElementById('settingsModal').classList.add('hidden');
-        window.openDataModal = () => {
-            const json = JSON.stringify(window.appData);
-            const spell = btoa(unescape(encodeURIComponent(json)));
-            document.getElementById('exportString').value = spell;
-            document.getElementById('importString').value = '';
-            document.getElementById('dataModal').classList.remove('hidden');
-        }
-        window.closeDataModal = () => document.getElementById('dataModal').classList.add('hidden');
-        window.addCategory = () => {
-            const v = document.getElementById('newCategoryName').value.trim();
-            if(v && !window.appData.categories.includes(v)) { window.appData.categories.push(v); document.getElementById('newCategoryName').value=''; syncData(); renderCategories(); }
-        }
-        window.deleteCategory = (cat) => { if(confirm(`カテゴリ「${cat}」を削除しますか？`)) { window.appData.categories=window.appData.categories.filter(c=>c!==cat); syncData(); renderCategories(); } }
-        window.copyExportString = () => {
-            const input = document.getElementById('exportString'); input.select(); input.setSelectionRange(0, 99999);
-            try {
-                if(document.execCommand('copy')) showToast('コピーしました');
-                else if(navigator.clipboard) navigator.clipboard.writeText(input.value).then(()=>showToast('コピーしました'));
-            } catch(e) { showToast('コピー失敗', true); }
-        }
-        window.shareData = async () => {
-            const text = document.getElementById('exportString').value;
-            if(navigator.share) await navigator.share({title:'SSM在庫', text}); else copyExportString();
-        }
-        window.importData = () => {
-            const v = document.getElementById('importString').value.trim();
-            if(!v) return;
-            try {
-                const p = JSON.parse(decodeURIComponent(escape(atob(v))));
-                if(p.categories && Array.isArray(p.items) && confirm('現在のデータを上書きしますか？')) {
-                    window.appData = p; 
-                    addLogEntry('データをインポートしました', 'info');
-                    syncData(); alert('完了'); renderAll(); closeDataModal();
-                }
-            } catch(e) { alert('データ形式エラー'); }
-        }
-        window.handleImageScan = async function(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const apiKey = localStorage.getItem(STORAGE_KEY_GEMINI);
-            if (!apiKey) { alert('Gemini APIキーを設定してください'); return; }
-            document.getElementById('loadingOverlay').classList.remove('hidden');
-            try {
-                const base64 = await fileToBase64(file);
-                const res = await callGemini(apiKey, base64);
-                if(res) {
-                    if(res.name) document.getElementById('itemName').value = res.name;
-                    if(res.quantity) document.getElementById('itemQuantity').value = res.quantity;
-                    if(res.category && window.appData.categories.includes(res.category)) document.getElementById('itemCategory').value = res.category;
-                    if(res.expiry) document.getElementById('itemExpiry').value = res.expiry;
-                    // AIによる容量推定反映
-                    if(res.capacityValue) document.getElementById('itemCapacityValue').value = res.capacityValue;
-                    if(res.capacityUnit) document.getElementById('itemCapacityUnit').value = res.capacityUnit;
-                }
-            } catch(e) { console.error(e); alert('AI解析エラー: '+e.message); }
-            finally { document.getElementById('loadingOverlay').classList.add('hidden'); input.value=''; }
-        }
-        function fileToBase64(file) {
-            return new Promise((resolve,reject) => {
-                const r = new FileReader(); r.readAsDataURL(file);
-                r.onload = e => {
-                    const img = new Image(); img.src = e.target.result;
-                    img.onload = () => {
-                        const cvs = document.createElement('canvas');
-                        const scale = 800/img.width; cvs.width = 800; cvs.height = img.height*scale;
-                        cvs.getContext('2d').drawImage(img,0,0,cvs.width,cvs.height);
-                        resolve(cvs.toDataURL('image/jpeg', 0.7).split(',')[1]);
-                    }; img.onerror = reject;
-                }; r.onerror = reject;
-            });
-        }
-        async function callGemini(key, base64) {
-            // MODEL CHANGED: gemini-2.5-flash (User Request)
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
-            // プロンプト修正: 賞味期限も読み取るように指示を追加
-            const prompt = `この画像を分析し、商品の「名前」「個数」「カテゴリ」「期限（賞味期限または消費期限）」「内容量(数値)」「内容量単位」を特定せよ。カテゴリは[${window.appData.categories.join(',')}]から選択。JSON形式{"name":str,"quantity":num,"category":str,"expiry":"YYYY-MM-DD", "capacityValue":num, "capacityUnit":str}で返す。期限不明はnull。単位はml, L, g, kg, 枚切り, 個入, cmのいずれかに正規化すること。`;
-            const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:"image/jpeg",data:base64}}]}]})});
-            if(!res.ok) {
-                if (res.status === 429) throw new Error("利用制限(429)");
-                throw new Error(res.status);
-            }
-            const d = await res.json();
-            const txt = d.candidates[0].content.parts[0].text;
-            const m = txt.match(/\{[\s\S]*\}/);
-            return m ? JSON.parse(m[0]) : null;
+            updateModeUI();
+            if(window.appMode === 'cloud') initCloudSync();
+            else { loadLocalData(); renderAll(); }
+            setupEventListeners();
         }
 
-        // --- FIXED: Re-added missing function ---
-        async function callGeminiText(key, prompt) {
-            // MODEL CHANGED: gemini-2.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
-            });
-            
-            if(!res.ok) {
-                if (res.status === 429) throw new Error("利用制限(429)に達しました。1分ほど待ってから再度お試しください。");
-                throw new Error(`API Error: ${res.status}`);
-            }
-            const d = await res.json();
-            return d.candidates[0].content.parts[0].text;
-        }
-
-        function showToast(msg, err=false) {
-            const t = document.createElement('div');
-            t.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold shadow-lg z-[100] ${err?'bg-red-500':'bg-slate-800'}`;
-            t.innerText = msg;
-            document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
-        }
-
-        // Start
         window.onload = initApp;
     </script>
 </body>

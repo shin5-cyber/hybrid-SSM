@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V21)</title>
+    <title>Smart Supplies Manager (Hybrid V22)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -1213,6 +1213,27 @@
             const m = txt.match(/\{[\s\S]*\}/);
             return m ? JSON.parse(m[0]) : null;
         }
+
+        // --- FIXED: Re-added missing function ---
+        async function callGeminiText(key, prompt) {
+            // MODEL CHANGED: gemini-2.5-flash
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+            
+            if(!res.ok) {
+                if (res.status === 429) throw new Error("利用制限(429)に達しました。1分ほど待ってから再度お試しください。");
+                throw new Error(`API Error: ${res.status}`);
+            }
+            const d = await res.json();
+            return d.candidates[0].content.parts[0].text;
+        }
+
         function showToast(msg, err=false) {
             const t = document.createElement('div');
             t.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold shadow-lg z-[100] ${err?'bg-red-500':'bg-slate-800'}`;

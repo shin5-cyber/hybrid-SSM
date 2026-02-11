@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V37)</title>
+    <title>Smart Supplies Manager (Hybrid V39)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -303,7 +303,7 @@
             <!-- ローディングオーバーレイ (z-index調整済み) -->
             <div id="loadingOverlay" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-50 hidden">
                 <i class="fas fa-circle-notch fa-spin text-4xl text-indigo-600 mb-2"></i>
-                <p class="font-bold text-indigo-800 animate-pulse">AI解析中...</p>
+                <p id="loadingMessage" class="font-bold text-indigo-800 animate-pulse">AI解析中...</p>
                 <p class="text-xs text-slate-500 mt-2">少々お待ちください...</p>
             </div>
         </div>
@@ -726,6 +726,9 @@
         window.openItemModal = function(id=null) {
             const modal = document.getElementById('itemModal');
             document.getElementById('loadingOverlay').classList.add('hidden');
+            const statusText = document.getElementById('loadingMessage');
+            if(statusText) statusText.innerText = "処理中...";
+
             // reset
             document.getElementById('itemId').value = '';
             document.getElementById('itemName').value = '';
@@ -858,6 +861,73 @@
                     syncData(); alert('完了'); renderAll(); closeDataModal();
                 }
             } catch(e) { alert('データ形式エラー'); }
+        }
+        
+        window.handleImageScan = async function(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const apiKey = localStorage.getItem(STORAGE_KEY_GEMINI);
+            if (!apiKey) { alert('Gemini APIキーを設定してください'); return; }
+            
+            // Show Loading
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const statusText = document.getElementById('loadingMessage');
+            loadingOverlay.classList.remove('hidden');
+            if(statusText) statusText.innerText = "画像を圧縮中...";
+
+            try {
+                const base64 = await fileToBase64(file);
+                
+                if(statusText) statusText.innerText = "AIに問い合わせ中...";
+                const res = await callGemini(apiKey, base64);
+                
+                if(res) {
+                    if(res.name) document.getElementById('itemName').value = res.name;
+                    if(res.quantity) document.getElementById('itemQuantity').value = res.quantity;
+                    if(res.category && window.appData.categories.includes(res.category)) document.getElementById('itemCategory').value = res.category;
+                    if(res.expiry) document.getElementById('itemExpiry').value = res.expiry;
+                    if(res.capacityValue) document.getElementById('itemCapacityValue').value = res.capacityValue;
+                    if(res.capacityUnit) document.getElementById('itemCapacityUnit').value = res.capacityUnit;
+                    showToast("AI入力完了！");
+                } else {
+                    alert("AIが情報を読み取れませんでした。写真を変えてお試しください。");
+                }
+            } catch(e) { 
+                console.error(e); 
+                let msg = e.message;
+                if(msg.includes('429')) msg = "利用制限(429)に達しました。1分ほど待ってから再度お試しください。";
+                alert('AI解析エラー: '+msg); 
+            }
+            finally { 
+                loadingOverlay.classList.add('hidden'); 
+                input.value=''; 
+            }
+        }
+        function fileToBase64(file) {
+            return new Promise((resolve,reject) => {
+                const r = new FileReader(); r.readAsDataURL(file);
+                r.onload = e => {
+                    const img = new Image(); img.src = e.target.result;
+                    img.onload = () => {
+                        const cvs = document.createElement('canvas');
+                        // リサイズ処理 (Safariメモリ対策)
+                        const MAX_SIZE = 800; 
+                        let width = img.width; 
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                        } else {
+                            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                        }
+                        cvs.width = width; 
+                        cvs.height = height;
+                        const ctx = cvs.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        // 圧縮
+                        resolve(cvs.toDataURL('image/jpeg', 0.6).split(',')[1]);
+                    }; img.onerror = reject;
+                }; r.onerror = reject;
+            });
         }
 
         // --- Log Modal ---
@@ -1105,6 +1175,7 @@
             if(key) { localStorage.setItem(STORAGE_KEY_GEMINI, key); alert('保存しました'); }
         }
 
+        // --- 7. Start App ---
         function initApp() {
             const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
             if(gKey) document.getElementById('geminiApiKey').value = gKey;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V32)</title>
+    <title>Smart Supplies Manager (Hybrid V33)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -64,6 +64,7 @@
                 <button onclick="openLogModal()" class="text-sm bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded transition" title="操作履歴">
                     <i class="fas fa-history"></i>
                 </button>
+                <!-- レシピボタン -->
                 <button onclick="openRecipeModal()" class="text-sm bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded transition flex items-center gap-1 shadow-sm font-bold border border-orange-400" title="レシピ提案">
                     <i class="fas fa-utensils"></i>
                 </button>
@@ -182,9 +183,6 @@
                 </div>
                 <div id="recipeResultArea" class="hidden mt-6 animate-fade-in">
                     <div id="recipeOutput" class="markdown-body bg-white p-5 rounded-xl border border-orange-100 shadow-sm text-sm leading-relaxed text-slate-700"></div>
-                    <div class="text-center mt-4">
-                        <p class="text-xs text-slate-400">※気に入らない場合は条件を変えて再度ボタンを押してください</p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -458,29 +456,32 @@
             t.innerText = msg;
             document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
         }
+        function fileToBase64(file) {
+            return new Promise((resolve,reject) => {
+                const r = new FileReader(); r.readAsDataURL(file);
+                r.onload = e => {
+                    const img = new Image(); img.src = e.target.result;
+                    img.onload = () => {
+                        const cvs = document.createElement('canvas');
+                        const scale = 800/img.width; cvs.width = 800; cvs.height = img.height*scale;
+                        cvs.getContext('2d').drawImage(img,0,0,cvs.width,cvs.height);
+                        resolve(cvs.toDataURL('image/jpeg', 0.7).split(',')[1]);
+                    }; img.onerror = reject;
+                }; r.onerror = reject;
+            });
+        }
 
-        // Logic Functions
+        // --- 3. Logic Functions ---
         function sanitizeData() {
             let isDirty = false;
             const ids = new Set();
             if(!window.appData.items) window.appData.items = [];
             window.appData.items.forEach(item => {
-                // Ensure unique ID
-                if(!item.id || ids.has(item.id)) {
-                    item.id = generateUUID();
-                    isDirty = true;
-                }
+                if(!item.id || ids.has(item.id)) { item.id = generateUUID(); isDirty = true; }
                 ids.add(item.id);
-                // Ensure number quantity
-                if(typeof item.quantity !== 'number') {
-                    item.quantity = parseFloat(item.quantity) || 0;
-                    isDirty = true;
-                }
+                if(typeof item.quantity !== 'number') { item.quantity = parseFloat(item.quantity) || 0; isDirty = true; }
             });
-            if(isDirty) {
-                console.log("Data sanitized.");
-                syncData();
-            }
+            if(isDirty) { console.log("Data sanitized."); syncData(); }
         }
 
         function addLogEntry(message, type = 'info') {
@@ -555,7 +556,7 @@
             return alerts;
         }
 
-        // Render Functions
+        // --- 4. Render Functions ---
         function renderCategories() {
             const container = document.getElementById('categoryFilters');
             const select = document.getElementById('itemCategory');
@@ -684,6 +685,7 @@
         }
 
         async function callGemini(key, base64) {
+            // MODEL: gemini-2.5-flash
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
             const prompt = `この画像を分析し、商品の「名前」「個数」「カテゴリ」「期限（賞味期限または消費期限）」「内容量(数値)」「内容量単位」を特定せよ。カテゴリは[${window.appData.categories.join(',')}]から選択。JSON形式{"name":str,"quantity":num,"category":str,"expiry":"YYYY-MM-DD", "capacityValue":num, "capacityUnit":str}で返す。期限不明はnull。単位はml, L, g, kg, 枚切り, 個入, cmのいずれかに正規化すること。`;
             const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:"image/jpeg",data:base64}}]}]})});
@@ -695,6 +697,7 @@
         }
 
         async function callGeminiText(key, prompt) {
+            // MODEL: gemini-2.5-flash
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
             const res = await fetch(url, {
                 method: 'POST',
@@ -917,19 +920,29 @@
             const loadingEl = document.getElementById('recipeLoading');
             const genBtn = document.getElementById('generateRecipeBtn');
             const outEl = document.getElementById('recipeOutput');
+
+            // Reset UI
             resultEl.classList.add('hidden');
             if(outEl) outEl.innerHTML = '';
             loadingEl.classList.add('hidden');
             genBtn.disabled = false;
             genBtn.innerHTML = '<i class="fas fa-magic"></i> AIにレシピを考えてもらう';
-            const today = new Date(); today.setHours(0,0,0,0);
+
+            // Filter items (expired or expiring in 3 days)
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
             const expiringItems = window.appData.items.filter(item => {
+                // 【日常品は除外】
+                if (item.category === '日常品') return false;
+
                 if(!item.expiryDate) return false;
                 const d = new Date(item.expiryDate);
                 const diffTime = d - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                return diffDays <= 3;
+                return diffDays <= 3; // Expiring soon or expired
             });
+
             if (expiringItems.length === 0) {
                 listEl.innerHTML = '<span class="text-slate-400">消費期限が近い食材はありません🎉</span>';
             } else {
@@ -940,6 +953,7 @@
                     return `<span class="inline-block px-2 py-1 rounded border text-xs font-bold ${color}">${i.name}</span>`;
                 }).join('');
             }
+            
             window.currentExpiringItems = expiringItems.length > 0 ? expiringItems.map(i => i.name).join(', ') : "冷蔵庫にある一般的な食材";
             modal.classList.remove('hidden');
         }
@@ -1006,6 +1020,113 @@
             if(window.appMode === 'cloud') initCloudSync();
             else { loadLocalData(); renderAll(); }
             setupEventListeners();
+        }
+        
+        function showErrorBanner(msg) {
+            const b = document.getElementById('globalErrorBanner');
+            if(b) { document.getElementById('globalErrorMessage').innerText = msg; b.classList.remove('hidden'); }
+        }
+
+        // --- Missing Functions from V33 ---
+        window.testConnection = async function() {
+            const btn = document.getElementById('testBtn');
+            const box = document.getElementById('connectionLog');
+            const content = document.getElementById('connectionLogContent');
+            content.innerHTML = '';
+            box.classList.remove('hidden');
+            const val = document.getElementById('firebaseConfigInput').value.trim();
+            if(!val) { addLog('エラー: コードが空です', 'error'); return; }
+            const config = parseFirebaseConfig(val);
+            if(!config) { addLog('エラー: 解析失敗。形式を確認してください', 'error'); return; }
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 通信中...';
+            btn.disabled = true;
+            addLog(`解析OK: ProjectID=${config.projectId}`);
+            try {
+                if (typeof firebase === 'undefined') throw new Error('Firebase SDKがロードされていません');
+                if (firebase.apps.length === 0) {}
+                const tempApp = firebase.initializeApp(config, "testApp_" + Date.now());
+                const tempAuth = tempApp.auth();
+                const tempDb = tempApp.firestore();
+                addLog('認証試行(匿名)...');
+                try {
+                    await tempAuth.signInAnonymously();
+                    addLog('認証成功', 'success');
+                } catch (authErr) {
+                    addLog(`認証スキップ(警告): ${authErr.code}`, 'warn');
+                }
+                addLog('データベース接続確認...');
+                try {
+                    const testRef = tempDb.collection('artifacts').doc('connection_test');
+                    await testRef.get();
+                    addLog('DB読み取り成功！', 'success');
+                    addLog('テスト完了！「設定を保存」を押してください', 'success');
+                    alert('接続成功！設定を保存してください。');
+                } catch (dbErr) {
+                    if(dbErr.code === 'permission-denied') {
+                        throw new Error('権限エラー: セキュリティルールを確認してください');
+                    } else {
+                        throw dbErr;
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+                addLog(`失敗: ${e.message}`, 'error');
+                alert(`接続テスト失敗:\n${e.message}`);
+            } finally {
+                btn.innerHTML = '<i class="fas fa-plug"></i> 接続テスト';
+                btn.disabled = false;
+            }
+        }
+
+        window.saveFirebaseConfig = function(btn) {
+            try {
+                const inputEl = document.getElementById('firebaseConfigInput');
+                const val = inputEl.value.trim();
+                
+                if(!val) {
+                    if(confirm('Firebase設定を削除してローカルモードに戻りますか？')) {
+                        localStorage.removeItem(STORAGE_KEY_FIREBASE);
+                        alert('設定を削除しました。画面を更新してください。');
+                        location.reload();
+                    }
+                    return;
+                }
+                
+                const config = parseFirebaseConfig(val);
+                if(!config) {
+                    alert('コードの解析に失敗しました。');
+                    return;
+                }
+
+                localStorage.setItem(STORAGE_KEY_FIREBASE, val);
+                
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> 保存しました！';
+                btn.classList.remove('bg-slate-700', 'hover:bg-slate-600');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500');
+                
+                showToast("設定を保存しました。ブラウザを更新してください。");
+                
+                setTimeout(() => {
+                    alert('設定を保存しました。\n\n【重要】\n設定を反映させるため、ブラウザの更新ボタンを押してページを再読み込みしてください。');
+                    btn.innerHTML = originalText;
+                    btn.classList.add('bg-slate-700', 'hover:bg-slate-600');
+                    btn.classList.remove('bg-green-600', 'hover:bg-green-500');
+                }, 500);
+
+            } catch(e) {
+                console.error(e);
+                alert('保存中にエラーが発生しました: ' + e.message);
+            }
+        }
+
+        window.checkSavedConfig = function() {
+            const saved = localStorage.getItem(STORAGE_KEY_FIREBASE);
+            if(saved) {
+                alert('【保存されている設定データ】\n' + saved.substring(0, 100) + '...\n(データは存在します)');
+            } else {
+                alert('保存されている設定データはありません。');
+            }
         }
 
         window.onload = initApp;

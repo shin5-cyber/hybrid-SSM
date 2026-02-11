@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V33)</title>
+    <title>Smart Supplies Manager (Hybrid V37)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -198,9 +198,10 @@
             <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto relative">
                 <input type="hidden" id="itemId">
                 
+                <!-- AIスキャンボタン -->
                 <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mb-4 flex items-center justify-between">
                     <div>
-                        <h3 class="font-bold text-indigo-800 text-sm"><i class="fas fa-magic"></i> AI自動入力</h3>
+                        <h3 class="font-bold text-indigo-800 text-sm"><i class="fas fa-camera"></i> AI自動入力</h3>
                         <p class="text-xs text-indigo-600">写真から商品名と個数を自動判定</p>
                     </div>
                     <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition cursor-pointer flex items-center gap-2">
@@ -299,9 +300,11 @@
                     保存する
                 </button>
             </div>
-            <div id="loadingOverlay" class="absolute inset-0 bg-white/70 flex flex-col items-center justify-center z-10 hidden">
+            <!-- ローディングオーバーレイ (z-index調整済み) -->
+            <div id="loadingOverlay" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-50 hidden">
                 <i class="fas fa-circle-notch fa-spin text-4xl text-indigo-600 mb-2"></i>
                 <p class="font-bold text-indigo-800 animate-pulse">AI解析中...</p>
+                <p class="text-xs text-slate-500 mt-2">少々お待ちください...</p>
             </div>
         </div>
     </div>
@@ -390,7 +393,7 @@
 
     <!-- Application Script -->
     <script>
-        // Constants & Global
+        // --- 1. Variables & Config ---
         const DEFAULT_CATEGORIES = ['食材', '日常品', '調味料'];
         const STORAGE_KEY_DATA = 'ssm_app_data';
         const STORAGE_KEY_FIREBASE = 'ssm_firebase_config';
@@ -407,7 +410,7 @@
         window.currentExpiringItems = "";
         let db, auth; 
 
-        // Helper Functions (Hoisted)
+        // --- 2. Helper Functions (Declarations) ---
         function generateUUID() {
             if (crypto && crypto.randomUUID) return crypto.randomUUID();
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -440,15 +443,17 @@
         function addLog(msg, type='info') {
             const box = document.getElementById('connectionLog');
             const content = document.getElementById('connectionLogContent');
-            box.classList.remove('hidden');
-            const div = document.createElement('div');
-            div.className = "mb-1 border-b border-gray-800 pb-1";
-            if(type==='error') div.className += " text-red-400";
-            if(type==='success') div.className += " text-green-300 font-bold";
-            if(type==='warn') div.className += " text-yellow-300";
-            div.innerText = `> ${msg}`;
-            content.appendChild(div);
-            box.scrollTop = box.scrollHeight;
+            if(box && content) {
+                box.classList.remove('hidden');
+                const div = document.createElement('div');
+                div.className = "mb-1 border-b border-gray-800 pb-1";
+                if(type==='error') div.className += " text-red-400";
+                if(type==='success') div.className += " text-green-300 font-bold";
+                if(type==='warn') div.className += " text-yellow-300";
+                div.innerText = `> ${msg}`;
+                content.appendChild(div);
+                box.scrollTop = box.scrollHeight;
+            }
         }
         function showToast(msg, err=false) {
             const t = document.createElement('div');
@@ -456,19 +461,9 @@
             t.innerText = msg;
             document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
         }
-        function fileToBase64(file) {
-            return new Promise((resolve,reject) => {
-                const r = new FileReader(); r.readAsDataURL(file);
-                r.onload = e => {
-                    const img = new Image(); img.src = e.target.result;
-                    img.onload = () => {
-                        const cvs = document.createElement('canvas');
-                        const scale = 800/img.width; cvs.width = 800; cvs.height = img.height*scale;
-                        cvs.getContext('2d').drawImage(img,0,0,cvs.width,cvs.height);
-                        resolve(cvs.toDataURL('image/jpeg', 0.7).split(',')[1]);
-                    }; img.onerror = reject;
-                }; r.onerror = reject;
-            });
+        function updateFormVisibility() {
+            document.getElementById('lowStockConfig').style.display = document.getElementById('lowStockNotify').checked ? 'block' : 'none';
+            document.getElementById('replacementConfig').style.display = document.getElementById('replacementNotify').checked ? 'flex' : 'none';
         }
 
         // --- 3. Logic Functions ---
@@ -524,12 +519,12 @@
                 badge.className = "text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold mode-badge-cloud flex items-center gap-1";
                 badge.innerHTML = '<i class="fas fa-cloud"></i> Cloud';
                 indicator.classList.remove('hidden');
-                shareMode.innerText = "CLOUD (共有)";
+                if(shareMode) shareMode.innerText = "CLOUD (共有)";
             } else {
                 badge.className = "text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold mode-badge-local flex items-center gap-1";
                 badge.innerHTML = '<i class="fas fa-home"></i> Local';
                 indicator.classList.add('hidden');
-                shareMode.innerText = "LOCAL (端末内)";
+                if(shareMode) shareMode.innerText = "LOCAL (端末内)";
             }
         }
 
@@ -685,20 +680,33 @@
         }
 
         async function callGemini(key, base64) {
-            // MODEL: gemini-2.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+            // MODEL: gemini-1.5-flash for stability
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
             const prompt = `この画像を分析し、商品の「名前」「個数」「カテゴリ」「期限（賞味期限または消費期限）」「内容量(数値)」「内容量単位」を特定せよ。カテゴリは[${window.appData.categories.join(',')}]から選択。JSON形式{"name":str,"quantity":num,"category":str,"expiry":"YYYY-MM-DD", "capacityValue":num, "capacityUnit":str}で返す。期限不明はnull。単位はml, L, g, kg, 枚切り, 個入, cmのいずれかに正規化すること。`;
             const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:"image/jpeg",data:base64}}]}]})});
-            if(!res.ok) { if (res.status === 429) throw new Error("利用制限(429)"); throw new Error(res.status); }
+            if(!res.ok) { 
+                if (res.status === 429) throw new Error("利用制限(429)に達しました。しばらく待ってから再試行してください。");
+                throw new Error(`API Error: ${res.status}`);
+            }
             const d = await res.json();
-            const txt = d.candidates[0].content.parts[0].text;
-            const m = txt.match(/\{[\s\S]*\}/);
-            return m ? JSON.parse(m[0]) : null;
+            const txt = d.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!txt) throw new Error("AIからの応答が空でした。");
+            
+            // Clean up Markdown code blocks if present
+            const cleanTxt = txt.replace(/```json\n|\n```|```/g, "").trim();
+            // Find JSON object
+            const firstOpen = cleanTxt.indexOf('{');
+            const lastClose = cleanTxt.lastIndexOf('}');
+            if (firstOpen !== -1 && lastClose !== -1) {
+                const jsonStr = cleanTxt.substring(firstOpen, lastClose + 1);
+                return JSON.parse(jsonStr);
+            }
+            return null;
         }
 
         async function callGeminiText(key, prompt) {
-            // MODEL: gemini-2.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+            // MODEL: gemini-1.5-flash
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -756,11 +764,7 @@
             modal.classList.remove('hidden');
         }
         window.closeItemModal = () => document.getElementById('itemModal').classList.add('hidden');
-        window.updateFormVisibility = () => {
-            document.getElementById('lowStockConfig').style.display = document.getElementById('lowStockNotify').checked ? 'block' : 'none';
-            document.getElementById('replacementConfig').style.display = document.getElementById('replacementNotify').checked ? 'flex' : 'none';
-        }
-
+        
         window.saveItem = () => {
             const id = document.getElementById('itemId').value;
             const name = document.getElementById('itemName').value.trim();
@@ -912,7 +916,7 @@
         }
         window.closeLogModal = () => document.getElementById('logModal').classList.add('hidden');
 
-        // --- Recipe & Advice ---
+        // --- Recipe ---
         window.openRecipeModal = function() {
             const modal = document.getElementById('recipeModal');
             const listEl = document.getElementById('expiringItemsList');
@@ -992,39 +996,6 @@
             document.getElementById('sortPrimary').addEventListener('change', renderItems);
             document.getElementById('lowStockNotify').addEventListener('change', updateFormVisibility);
             document.getElementById('replacementNotify').addEventListener('change', updateFormVisibility);
-        }
-
-        // --- 7. Start App ---
-        function initApp() {
-            const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
-            if(gKey) document.getElementById('geminiApiKey').value = gKey;
-            const fbConfigStr = localStorage.getItem(STORAGE_KEY_FIREBASE);
-            if(fbConfigStr) {
-                document.getElementById('firebaseConfigInput').value = fbConfigStr;
-                try {
-                    const config = parseFirebaseConfig(fbConfigStr);
-                    if(config && config.apiKey) {
-                        if (!firebase.apps.length) firebase.initializeApp(config);
-                        else firebase.app();
-                        db = firebase.firestore();
-                        auth = firebase.auth();
-                        window.appMode = 'cloud';
-                    }
-                } catch(e) {
-                    console.error('Firebase Init Failed:', e);
-                    window.appMode = 'local';
-                    showErrorBanner(`クラウド初期化エラー: ${e.message}`);
-                }
-            }
-            updateModeUI();
-            if(window.appMode === 'cloud') initCloudSync();
-            else { loadLocalData(); renderAll(); }
-            setupEventListeners();
-        }
-        
-        function showErrorBanner(msg) {
-            const b = document.getElementById('globalErrorBanner');
-            if(b) { document.getElementById('globalErrorMessage').innerText = msg; b.classList.remove('hidden'); }
         }
 
         // --- Missing Functions from V33 ---
@@ -1127,6 +1098,43 @@
             } else {
                 alert('保存されている設定データはありません。');
             }
+        }
+
+        window.saveApiKey = function() {
+            const key = document.getElementById('geminiApiKey').value.trim();
+            if(key) { localStorage.setItem(STORAGE_KEY_GEMINI, key); alert('保存しました'); }
+        }
+
+        function initApp() {
+            const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
+            if(gKey) document.getElementById('geminiApiKey').value = gKey;
+            const fbConfigStr = localStorage.getItem(STORAGE_KEY_FIREBASE);
+            if(fbConfigStr) {
+                document.getElementById('firebaseConfigInput').value = fbConfigStr;
+                try {
+                    const config = parseFirebaseConfig(fbConfigStr);
+                    if(config && config.apiKey) {
+                        if (!firebase.apps.length) firebase.initializeApp(config);
+                        else firebase.app();
+                        db = firebase.firestore();
+                        auth = firebase.auth();
+                        window.appMode = 'cloud';
+                    }
+                } catch(e) {
+                    console.error('Firebase Init Failed:', e);
+                    window.appMode = 'local';
+                    showErrorBanner(`クラウド初期化エラー: ${e.message}`);
+                }
+            }
+            updateModeUI();
+            if(window.appMode === 'cloud') initCloudSync();
+            else { loadLocalData(); renderAll(); }
+            setupEventListeners();
+        }
+        
+        function showErrorBanner(msg) {
+            const b = document.getElementById('globalErrorBanner');
+            if(b) { document.getElementById('globalErrorMessage').innerText = msg; b.classList.remove('hidden'); }
         }
 
         window.onload = initApp;

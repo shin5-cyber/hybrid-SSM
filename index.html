@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V42)</title>
+    <title>Smart Supplies Manager (Hybrid V43)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -343,15 +343,7 @@
                     <h3 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1"><i class="fas fa-key"></i> Gemini API設定</h3>
                     <div class="bg-slate-50 p-3 rounded text-sm">
                         <input type="password" id="geminiApiKey" class="w-full p-2 border rounded text-xs mb-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="AIzaSy...">
-                        <div class="mb-2">
-                             <label class="text-xs text-slate-600 block mb-1">使用するAIモデル</label>
-                             <select id="geminiModel" class="w-full p-2 border rounded text-xs bg-white outline-none">
-                                 <option value="gemini-1.5-flash">Gemini 1.5 Flash (標準・安定)</option>
-                                 <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash-8B (高速)</option>
-                                 <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (最新・実験的)</option>
-                                 <option value="gemini-1.5-pro">Gemini 1.5 Pro (高性能)</option>
-                             </select>
-                        </div>
+                        <p class="text-[10px] text-slate-500 mb-2">※現在、システムの制約により特定のモデル（gemini-2.5-flash-preview）のみ使用可能に固定されています。</p>
                         <button onclick="saveApiKey()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded font-bold transition text-xs">
                             キーを保存
                         </button>
@@ -407,12 +399,14 @@
         const STORAGE_KEY_DATA = 'ssm_app_data';
         const STORAGE_KEY_FIREBASE = 'ssm_firebase_config';
         const STORAGE_KEY_GEMINI = 'ssm_gemini_api_key';
-        const STORAGE_KEY_MODEL = 'ssm_gemini_model'; // Added model key
         const SHARED_APP_ID = "family_shared_v1"; 
         const COLLECTION_NAME = "inventory_data";
         const DOC_ID = "main_list";
         const CATEGORY_COLORS = {'食材':'bg-blue-100 text-blue-800 border-blue-200','日常品':'bg-purple-100 text-purple-800 border-purple-200','調味料':'bg-amber-100 text-amber-800 border-amber-200'};
         const DEFAULT_COLOR = 'bg-slate-100 text-slate-800 border-slate-200';
+
+        // ONLY gemini-2.5-flash-preview-09-2025 is permitted in this specific preview environment.
+        const ENV_ALLOWED_MODEL = 'gemini-2.5-flash-preview-09-2025';
 
         window.appData = { categories: [...DEFAULT_CATEGORIES], items: [], logs: [] };
         window.currentFilter = 'all';
@@ -689,14 +683,10 @@
             }
         }
 
-        // --- AI API Calls (Updated for Multi-Model) ---
-        function getModelName() {
-            return localStorage.getItem(STORAGE_KEY_MODEL) || 'gemini-1.5-flash';
-        }
-
+        // --- AI API Calls (Fixed for Allowed Model ONLY) ---
         async function callGemini(key, base64) {
-            const model = getModelName();
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            // Environment enforces use of THIS specific model string.
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${ENV_ALLOWED_MODEL}:generateContent?key=${key}`;
             
             const prompt = `この画像を分析し、商品の「名前」「個数」「カテゴリ」「期限（賞味期限または消費期限）」「内容量(数値)」「内容量単位」を特定せよ。カテゴリは[${window.appData.categories.join(',')}]から選択。JSON形式{"name":str,"quantity":num,"category":str,"expiry":"YYYY-MM-DD", "capacityValue":num, "capacityUnit":str}で返す。期限不明はnull。単位はml, L, g, kg, 枚切り, 個入, cmのいずれかに正規化すること。`;
             
@@ -708,7 +698,6 @@
 
             if(!res.ok) { 
                 let msg = `API Error: ${res.status}`;
-                if (res.status === 404) msg = `モデル「${model}」が見つかりません。設定で別のモデルを選択してください。`;
                 if (res.status === 429) msg = "利用制限(429)に達しました。しばらく待ってから再試行してください。";
                 throw new Error(msg); 
             }
@@ -717,7 +706,9 @@
             const txt = d.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!txt) throw new Error("AIからの応答が空でした。");
             
+            // Clean up Markdown code blocks if present
             const cleanTxt = txt.replace(/```json\n|\n```|```/g, "").trim();
+            // Find JSON object
             const firstOpen = cleanTxt.indexOf('{');
             const lastClose = cleanTxt.lastIndexOf('}');
             if (firstOpen !== -1 && lastClose !== -1) {
@@ -728,8 +719,7 @@
         }
 
         async function callGeminiText(key, prompt) {
-            const model = getModelName();
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${ENV_ALLOWED_MODEL}:generateContent?key=${key}`;
             
             const res = await fetch(url, {
                 method: 'POST',
@@ -739,7 +729,6 @@
 
             if(!res.ok) {
                 let msg = `API Error: ${res.status}`;
-                if (res.status === 404) msg = `モデル「${model}」が見つかりません。設定で別のモデルを選択してください。`;
                 if (res.status === 429) msg = "利用制限(429)に達しました。しばらく待ってから再試行してください。";
                 throw new Error(msg);
             }
@@ -753,6 +742,9 @@
         window.openItemModal = function(id=null) {
             const modal = document.getElementById('itemModal');
             document.getElementById('loadingOverlay').classList.add('hidden');
+            const statusText = document.getElementById('loadingMessage');
+            if(statusText) statusText.innerText = "処理中...";
+
             // reset
             document.getElementById('itemId').value = '';
             document.getElementById('itemName').value = '';
@@ -848,9 +840,6 @@
         }
 
         window.openSettingsModal = () => {
-            const model = localStorage.getItem(STORAGE_KEY_MODEL) || 'gemini-1.5-flash';
-            const select = document.getElementById('geminiModel');
-            if(select) select.value = model;
             document.getElementById('settingsModal').classList.remove('hidden');
         }
         window.closeSettingsModal = () => document.getElementById('settingsModal').classList.add('hidden');
@@ -919,7 +908,7 @@
                     if(res.capacityUnit) document.getElementById('itemCapacityUnit').value = res.capacityUnit;
                     showToast("AI入力完了！");
                 } else {
-                    alert("AIが情報を読み取れませんでした。写真を変えてお試しください。");
+                    alert("AIが情報を正しく読み取れませんでした。写真を変えてもう一度お試しください。");
                 }
             } catch(e) { 
                 console.error(e); 
@@ -1199,10 +1188,8 @@
 
         window.saveApiKey = function() {
             const key = document.getElementById('geminiApiKey').value.trim();
-            const model = document.getElementById('geminiModel').value;
             if(key) { 
                 localStorage.setItem(STORAGE_KEY_GEMINI, key); 
-                localStorage.setItem(STORAGE_KEY_MODEL, model);
                 alert('保存しました'); 
             }
         }
@@ -1212,13 +1199,6 @@
             const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
             if(gKey) document.getElementById('geminiApiKey').value = gKey;
             
-            // Set Model Select
-            const savedModel = localStorage.getItem(STORAGE_KEY_MODEL);
-            const modelSelect = document.getElementById('geminiModel');
-            if (savedModel && modelSelect) {
-                modelSelect.value = savedModel;
-            }
-
             const fbConfigStr = localStorage.getItem(STORAGE_KEY_FIREBASE);
             if(fbConfigStr) {
                 document.getElementById('firebaseConfigInput').value = fbConfigStr;

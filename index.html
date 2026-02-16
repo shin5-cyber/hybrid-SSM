@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Supplies Manager (Hybrid V43)</title>
+    <title>Smart Supplies Manager (Hybrid V36)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Markdown Parser -->
@@ -343,7 +343,6 @@
                     <h3 class="font-bold text-sm text-slate-700 mb-2 border-b pb-1"><i class="fas fa-key"></i> Gemini API設定</h3>
                     <div class="bg-slate-50 p-3 rounded text-sm">
                         <input type="password" id="geminiApiKey" class="w-full p-2 border rounded text-xs mb-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="AIzaSy...">
-                        <p class="text-[10px] text-slate-500 mb-2">※現在、システムの制約により特定のモデル（gemini-2.5-flash-preview）のみ使用可能に固定されています。</p>
                         <button onclick="saveApiKey()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded font-bold transition text-xs">
                             キーを保存
                         </button>
@@ -405,7 +404,7 @@
         const CATEGORY_COLORS = {'食材':'bg-blue-100 text-blue-800 border-blue-200','日常品':'bg-purple-100 text-purple-800 border-purple-200','調味料':'bg-amber-100 text-amber-800 border-amber-200'};
         const DEFAULT_COLOR = 'bg-slate-100 text-slate-800 border-slate-200';
 
-        // ONLY gemini-2.5-flash-preview-09-2025 is permitted in this specific preview environment.
+        // ONLY gemini-2.5-flash-preview-09-2025 is permitted
         const ENV_ALLOWED_MODEL = 'gemini-2.5-flash-preview-09-2025';
 
         window.appData = { categories: [...DEFAULT_CATEGORIES], items: [], logs: [] };
@@ -491,6 +490,8 @@
             const newId = String(now + Math.floor(Math.random()*1000));
             window.appData.logs.unshift({ id: newId, ts: now, msg: message, type: type });
             if (window.appData.logs.length > 50) window.appData.logs.length = 50;
+            // Immediate sync to prevent data loss
+            syncData();
         }
         
         function loadLocalData() {
@@ -907,6 +908,8 @@
                     if(res.capacityValue) document.getElementById('itemCapacityValue').value = res.capacityValue;
                     if(res.capacityUnit) document.getElementById('itemCapacityUnit').value = res.capacityUnit;
                     showToast("AI入力完了！");
+                    // Add log entry for AI scan
+                    addLogEntry(`AIスキャンで「${res.name}」を登録しました`, 'add');
                 } else {
                     alert("AIが情報を正しく読み取れませんでした。写真を変えてもう一度お試しください。");
                 }
@@ -1188,17 +1191,13 @@
 
         window.saveApiKey = function() {
             const key = document.getElementById('geminiApiKey').value.trim();
-            if(key) { 
-                localStorage.setItem(STORAGE_KEY_GEMINI, key); 
-                alert('保存しました'); 
-            }
+            if(key) { localStorage.setItem(STORAGE_KEY_GEMINI, key); alert('保存しました'); }
         }
 
         // --- 7. Start App ---
         function initApp() {
             const gKey = localStorage.getItem(STORAGE_KEY_GEMINI);
             if(gKey) document.getElementById('geminiApiKey').value = gKey;
-            
             const fbConfigStr = localStorage.getItem(STORAGE_KEY_FIREBASE);
             if(fbConfigStr) {
                 document.getElementById('firebaseConfigInput').value = fbConfigStr;
